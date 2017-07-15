@@ -56,7 +56,7 @@ def decode_labels_2(mask):
     return im
 
 
-def decode_labels(mask, num_images=1, num_classes=34):
+def decode_labels(mask, num_images=1, num_classes=3):
     """Decode batch of segmentation masks.
     
     Args:

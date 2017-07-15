@@ -20,19 +20,22 @@ import numpy as np
 from models import DeepLabLFOVModel, ImageReader, decode_labels, inv_preprocess
 
 
-BATCH_SIZE = 4
-DATA_DIRECTORY = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/dataset/tfexample/'
+BATCH_SIZE = 2
+#DATA_DIRECTORY = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/dataset/tfexample/'
+DATA_DIRECTORY = '/media/chen/data1/Lung_project/dataset/'
 DATASET_NAME = 'heihc' #dataset name consists of all lower case letters
 INPUT_SIZE = '500,500'
 LEARNING_RATE = 1e-4
 NUM_STEPS = 30001
 RANDOM_SCALE = True
-RESTORE_FROM = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/dataset/init/SEC_init.ckpt'
+#RESTORE_FROM = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/dataset/init/SEC_init.ckpt'
+RESTORE_FROM = '/media/chen/data1/Lung_project/model/SEC_init(1).ckpt'
 FINETUNE_FROM = None
-SAVE_NUM_IMAGES = 2
+SAVE_NUM_IMAGES = 1
 SAVE_PRED_EVERY = 20
 SAVE_MODEL_EVERY = 1000
-SNAPSHOT_DIR = '/media/data/deeplab_test/snapshot_1/'
+# SNAPSHOT_DIR = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/deeplab_test/snapshot_1/'
+SNAPSHOT_DIR = '/media/chen/data1/Lung_project/deeplab_lfov_test/snapshot_1/'
 NUM_CLASS = 3
 IMG_MEAN = np.array((191.94056702, 147.93313599, 179.39755249), dtype=np.float32) # This is in R,G,B order
 
@@ -115,6 +118,14 @@ def main():
     
     # Load reader.
     with tf.name_scope("create_inputs"):
+        # reader = ImageReader(
+        #     args.data_dir,
+        #     args.data_list,
+        #     is_training=True,
+        #     input_size=input_size,
+        #     random_scale=False,
+        #     coord=coord,
+        #     image_mean=IMG_MEAN)
         reader = ImageReader(dataset_name=args.dataset_name,
                              dataset_split_name='train',
                              dataset_dir=args.data_dir,
@@ -125,6 +136,7 @@ def main():
     
     # Create network.
     net = DeepLabLFOVModel(args.number_class)
+
 
     # Define the loss and optimisation parameters.
     pred, loss = net.loss(image_batch, label_batch)
@@ -194,11 +206,25 @@ def main():
     # Iterate over training steps.
     for step in range(args.num_steps):
         start_time = time.time()
-        
+        print('save')
         if step % args.save_pred_every == 0:
+            print('save ')
+
             loss_value, summary, _ = sess.run([loss, final_summary, optim])
             #fig, axes = plt.subplots(args.save_num_images, 3, figsize = (16, 12))
             summary_writer.add_summary(summary, step)
+            # for i in xrange(args.save_num_images):
+            #     axes.flat[i * 3].set_title('data')
+            #     axes.flat[i * 3].imshow((images[i] + IMG_MEAN)[:, :, ::-1].astype(np.uint8))
+
+            #     axes.flat[i * 3 + 1].set_title('mask')
+            #     axes.flat[i * 3 + 1].imshow(decode_labels(labels[i, :, :, 0]))
+
+            #     axes.flat[i * 3 + 2].set_title('pred')
+            #     axes.flat[i * 3 + 2].imshow(decode_labels(preds[i, :, :, 0]))
+            # plt.savefig(args.save_dir + str(start_time) + ".png")
+            # plt.close(fig)
+        else:
             loss_value, _ = sess.run([loss, optim])
 
         if step % args.save_model_every == 0:
@@ -209,5 +235,6 @@ def main():
     coord.request_stop()
     coord.join(threads)
     
+
 if __name__ == '__main__':
     main()

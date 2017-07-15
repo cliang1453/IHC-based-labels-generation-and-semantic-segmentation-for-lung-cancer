@@ -6,7 +6,7 @@ arg_scope = tf.contrib.framework.arg_scope
 
 # conv layers
 def vgg_conv_dilation(inputs, endpoints, weight_decay=0.0005, scope='vgg_16', reuse=None):
-  with arg_scope([layers.convolution2d, layers.max_pool2d], padding='SAME'):
+  with arg_scope([layers.convolution2d, layers.max_pool2d], padding='VALID'):
     with arg_scope([layers.convolution2d], rate=1,
                    weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
                    weights_regularizer=layers.l2_regularizer(weight_decay)):
