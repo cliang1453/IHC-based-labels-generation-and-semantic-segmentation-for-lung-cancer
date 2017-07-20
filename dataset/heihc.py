@@ -19,7 +19,7 @@ from dataset import dataset_common
 
 slim = tf.contrib.slim
 
-FILE_PATTERN = '%s-*'
+FILE_PATTERN = '%s_heihc-*'
 ITEMS_TO_DESCRIPTIONS = {
     'image': 'A color image of varying height and width.',
     'segmask' : 'segmentation mask GT',

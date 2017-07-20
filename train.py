@@ -20,18 +20,18 @@ import numpy as np
 from models import DeepLabLFOVModel, ImageReader, decode_labels, inv_preprocess
 
 
-BATCH_SIZE = 2
+BATCH_SIZE = 8
 #DATA_DIRECTORY = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/dataset/tfexample/'
-DATA_DIRECTORY = '/media/chen/data1/Lung_project/dataset/'
+DATA_DIRECTORY = '/media/chen/data1/Lung_project/dataset/tfexample/'
 DATASET_NAME = 'heihc' #dataset name consists of all lower case letters
 INPUT_SIZE = '500,500'
 LEARNING_RATE = 1e-4
 NUM_STEPS = 30001
 RANDOM_SCALE = True
 #RESTORE_FROM = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/dataset/init/SEC_init.ckpt'
-RESTORE_FROM = '/media/chen/data1/Lung_project/model/SEC_init(1).ckpt'
+RESTORE_FROM = '/media/chen/data1/Lung_project/dataset/init/SEC_init.ckpt'
 FINETUNE_FROM = None
-SAVE_NUM_IMAGES = 1
+SAVE_NUM_IMAGES = 2
 SAVE_PRED_EVERY = 20
 SAVE_MODEL_EVERY = 1000
 # SNAPSHOT_DIR = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/deeplab_test/snapshot_1/'
@@ -176,7 +176,7 @@ def main():
     
     
     # Set up tf session and initialize variables. 
-    config = tf.ConfigProto()
+    config = tf.ConfigProto(log_device_placement=True)
     config.gpu_options.allow_growth = True
     sess = tf.Session(config=config)
     init = tf.initialize_all_variables()
@@ -199,31 +199,13 @@ def main():
 
     # Start queue threads.
     threads = tf.train.start_queue_runners(coord=coord, sess=sess)
-    
-    # if not os.path.exists(args.save_dir):
-    #     os.makedirs(args.save_dir)
    
-    # Iterate over training steps.
+    #Iterate over training steps.
     for step in range(args.num_steps):
         start_time = time.time()
-        print('save')
         if step % args.save_pred_every == 0:
-            print('save ')
-
             loss_value, summary, _ = sess.run([loss, final_summary, optim])
-            #fig, axes = plt.subplots(args.save_num_images, 3, figsize = (16, 12))
             summary_writer.add_summary(summary, step)
-            # for i in xrange(args.save_num_images):
-            #     axes.flat[i * 3].set_title('data')
-            #     axes.flat[i * 3].imshow((images[i] + IMG_MEAN)[:, :, ::-1].astype(np.uint8))
-
-            #     axes.flat[i * 3 + 1].set_title('mask')
-            #     axes.flat[i * 3 + 1].imshow(decode_labels(labels[i, :, :, 0]))
-
-            #     axes.flat[i * 3 + 2].set_title('pred')
-            #     axes.flat[i * 3 + 2].imshow(decode_labels(preds[i, :, :, 0]))
-            # plt.savefig(args.save_dir + str(start_time) + ".png")
-            # plt.close(fig)
         else:
             loss_value, _ = sess.run([loss, optim])
 
@@ -237,4 +219,5 @@ def main():
     
 
 if __name__ == '__main__':
+    tf.device('/gpu:0')
     main()

@@ -77,7 +77,7 @@ import pdb
 import numpy as np
 import tensorflow as tf
 
-tf.app.flags.DEFINE_string('data_dir', '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/dataset/',
+tf.app.flags.DEFINE_string('data_dir', '/media/chen/data/Lung_project/dataset/',
                            'Data directory of HE_IHC')
 
 tf.app.flags.DEFINE_string('train_list', 'train.txt',
@@ -86,7 +86,7 @@ tf.app.flags.DEFINE_string('train_list', 'train.txt',
 tf.app.flags.DEFINE_string('validation_list', 'val.txt',
                            'Validation data list of HE_IHC')
 
-tf.app.flags.DEFINE_string('output_directory', '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/dataset/tfexample/',
+tf.app.flags.DEFINE_string('output_directory', '/media/chen/data/Lung_project/dataset/tfexample/',
                            'Output data directory')
 
 tf.app.flags.DEFINE_integer('train_shards', 32,
@@ -460,9 +460,9 @@ def main(unused_argv):
   print('Saving results to %s' % FLAGS.output_directory)
 
   # Run it!
-  _process_dataset('validation', FLAGS.validation_list,
+  _process_dataset('validation_heihc', FLAGS.validation_list,
                    FLAGS.validation_shards, FLAGS.data_dir)
-  _process_dataset('train', FLAGS.train_list,
+  _process_dataset('train_heihc', FLAGS.train_list,
                    FLAGS.train_shards, FLAGS.data_dir)
 
 if __name__ == '__main__':

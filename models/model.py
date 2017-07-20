@@ -14,7 +14,7 @@ class DeepLabLFOVModel(object):
     there for details.
     """
 
-    def __init__(self, number_class=34):
+    def __init__(self, number_class=3):
 
         """Create the model"""
         self.n_classes = number_class
