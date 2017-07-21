@@ -21,48 +21,62 @@ def u_net_conv(inputs, endpoints, weight_decay=0.0005, scope='u_net_conv', reuse
     """
     with arg_scope([layers.convolution2d, layers.max_pool2d], padding='SAME'):
         with arg_scope([layers.convolution2d], rate=1,
-                        activation_fn= tf.nn.relu,  
+                        activation_fn= None, 
+                        normalizer_fn = None,  
                         weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
                         bias_initializer = tf.constant_initializer(value=0.0),
                         weights_regularizer=layers.l2_regularizer(weight_decay)):
-            with tf.variable_scope(scope, "u_net_conv", [inputs], reuse=reuse):
-                
-                #conv -> bn -> relu -> conv -> bn -> relu -> pool 
-                #bn turns on only when training flag is on 
-                if train:
-                    normalizer_fn = layers.batch_norm
-                else:
-                    normalizer_fn = None
+            with arg_scope([layers.batch_norm], 
+                            decay = 0.999, 
+                            ceter = True,
+                            scale = False,
+                            epsilon = 1e-5,
+                            updates_collections=ops.GraphKeys.UPDATE_OPS,
+                            activation_fn = tf.nn.relu)
+                with tf.variable_scope(scope, "u_net_conv", [inputs], reuse=reuse):
+                    
+                    #conv -> bn -> relu -> conv -> bn -> relu -> pool 
+                    #according to the paper, no max pool after conv5 
 
-                net = layers.convolution2d(inputs, 64, [3, 3], normalizer_fn = normalizer_fn, scope='conv1_1')
-                net = layers.convolution2d(net, 64, [3, 3], normalizer_fn = normalizer_fn, scope='conv1_2')
-                endpoints['conv1'] = net
-                net = layers.max_pool2d(net, [2, 2], scope='pool1')
-                endpoints['pool1'] = net
+                    net = layers.convolution2d(inputs, 64, [3, 3], scope='conv1_1')
+                    net = layers.batch_norm(net, is_train = train, scope='bn1_1')
+                    net = layers.convolution2d(net, 64, [3, 3], scope='conv1_2')
+                    net = layers.batch_norm(net, is_train = train, scope='bn1_2')
+                    endpoints['conv1'] = net
+                    net = layers.max_pool2d(net, [2, 2], scope='pool1')
+                    endpoints['pool1'] = net
 
-                net = layers.convolution2d(net, 128, [3, 3], normalizer_fn = normalizer_fn, scope='conv2_1')
-                net = layers.convolution2d(net, 128, [3, 3], normalizer_fn = normalizer_fn, scope='conv2_2')
-                endpoints['conv2'] = net
-                net = layers.max_pool2d(net, [2, 2], scope='pool2')
-                endpoints['pool2'] = net
+                    net = layers.convolution2d(net, 128, [3, 3], scope='conv2_1')
+                    net = layers.batch_norm(net, is_train = train, scope='bn2_1')
+                    net = layers.convolution2d(net, 128, [3, 3], scope='conv2_2')
+                    net = layers.batch_norm(net, is_train = train, scope='bn2_2')
+                    endpoints['conv2'] = net
+                    net = layers.max_pool2d(net, [2, 2], scope='pool2')
+                    endpoints['pool2'] = net
 
-                net = layers.convolution2d(net, 256, [3, 3], normalizer_fn = normalizer_fn, scope='conv3_1')
-                net = layers.convolution2d(net, 256, [3, 3], normalizer_fn = normalizer_fn, scope='conv3_2')
-                endpoints['conv3'] = net
-                net = layers.max_pool2d(net, [2, 2], scope='pool3')
-                endpoints['pool3'] = net
+                    net = layers.convolution2d(net, 256, [3, 3], scope='conv3_1')
+                    net = layers.batch_norm(net, is_train = train, scope='bn3_1')
+                    net = layers.convolution2d(net, 256, [3, 3], scope='conv3_2')
+                    net = layers.batch_norm(net, is_train = train, scope='bn3_2')
+                    endpoints['conv3'] = net
+                    net = layers.max_pool2d(net, [2, 2], scope='pool3')
+                    endpoints['pool3'] = net
 
-                net = layers.convolution2d(net, 512, [3, 3], normalizer_fn = normalizer_fn, scope='conv4_1')
-                net = layers.convolution2d(net, 512, [3, 3], normalizer_fn = normalizer_fn, scope='conv4_2')
-                endpoints['conv4'] = net
-                net = layers.max_pool2d(net, [2, 2], scope='pool4')
-                endpoints['pool4'] = net
+                    net = layers.convolution2d(net, 512, [3, 3], scope='conv4_1')
+                    net = layers.batch_norm(net, is_train = train, scope='bn4_1')
+                    net = layers.convolution2d(net, 512, [3, 3], scope='conv4_2')
+                    net = layers.batch_norm(net, is_train = train, scope='bn4_2')
+                    endpoints['conv4'] = net
+                    net = layers.max_pool2d(net, [2, 2], scope='pool4')
+                    endpoints['pool4'] = net
 
-                net = layers.convolution2d(net, 1024, [3, 3], normalizer_fn = normalizer_fn, scope='conv5_1')
-                net = layers.convolution2d(net, 1024, [3, 3], normalizer_fn = normalizer_fn, scope='conv5_2')
-                endpoints['conv5'] = net
+                    net = layers.convolution2d(net, 1024, [3, 3], scope='conv5_1')
+                    net = layers.batch_norm(net, is_train = train, scope='bn5_1')
+                    net = layers.convolution2d(net, 1024, [3, 3], scope='conv5_2')
+                    net = layers.batch_norm(net, is_train = train, scope='bn5_2')
+                    endpoints['conv5'] = net
 
-                return net, endpoints 
+    return net, endpoints 
 
 
 def u_net_deconv(inputs, endpoints, weight_decay=0.0005, scope='u_net_deconv', reuse = None, train=False, dropout = False, num_classes):
@@ -72,43 +86,55 @@ def u_net_deconv(inputs, endpoints, weight_decay=0.0005, scope='u_net_deconv', r
     """
     with arg_scope([layers.convolution2d, layers.max_pool2d], padding='SAME'):
         with arg_scope([layers.convolution2d], rate=1,
-                        activation_fn= tf.nn.relu, 
+                        activation_fn= None, 
+                        normalizer_fn = None, 
                         weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
                         bias_initializer = tf.constant_initializer(value=0.0),
                         weights_regularizer=layers.l2_regularizer(weight_decay)):
-            with tf.variable_scope(scope, "u_net_deconv", [inputs], reuse=reuse):
-                
-                if train:
-                    normalizer_fn = layers.batch_norm
-                else:
-                    normalizer_fn = None
+            with arg_scope([layers.batch_norm], 
+                            decay = 0.999, 
+                            ceter = True,
+                            scale = False,
+                            epsilon = 1e-5,
+                            updates_collections=ops.GraphKeys.UPDATE_OPS,
+                            activation_fn = tf.nn.relu)
+                with tf.variable_scope(scope, "u_net_deconv", [inputs], reuse=reuse):
 
-                # upsample -> concat -> conv -> bn -> relu -> conv -> bn -> relu
-                net = upsample_concat(net, endpoints['conv4'])
-                net = layers.convolution2d(net, 512, [3, 3], normalizer_fn = normalizer_fn, scope='deconv4_1')
-                net = layers.convolution2d(net, 512, [3, 3], normalizer_fn = normalizer_fn, scope='deconv4_2')
-                endpoints['deconv4'] = net
+                    # upsample -> concat -> conv -> bn -> relu -> conv -> bn -> relu
+                    net = upsample_concat(net, endpoints['conv4'])
+                    net = layers.convolution2d(net, 512, [3, 3], scope='deconv4_1')
+                    net = layers.batch_norm(net, is_train = train, scope='deconv_bn4_1')
+                    net = layers.convolution2d(net, 512, [3, 3], scope='deconv4_2')
+                    net = layers.batch_norm(net, is_train = train, scope='deconv_bn4_2')
+                    endpoints['deconv4'] = net
 
-                net = upsample_concat(net, endpoints['conv3'])
-                net = layers.convolution2d(net, 256, [3, 3], normalizer_fn = normalizer_fn, scope='deconv3_1')
-                net = layers.convolution2d(net, 256, [3, 3], normalizer_fn = normalizer_fn, scope='deconv3_2')
-                endpoints['deconv3'] = net
+                    net = upsample_concat(net, endpoints['conv3'])
+                    net = layers.convolution2d(net, 256, [3, 3], scope='deconv3_1')
+                    net = layers.batch_norm(net, is_train = train, scope='deconv_bn3_1')
+                    net = layers.convolution2d(net, 256, [3, 3], scope='deconv3_2')
+                    net = layers.batch_norm(net, is_train = train, scope='deconv_bn3_2')
+                    endpoints['deconv3'] = net
 
-                net = upsample_concat(net, endpoints['conv2'])
-                net = layers.convolution2d(net, 128, [3, 3], normalizer_fn = normalizer_fn, scope='deconv2_1')
-                net = layers.convolution2d(net, 128, [3, 3], normalizer_fn = normalizer_fn, scope='deconv2_2')
-                endpoints['deconv2'] = net
+                    net = upsample_concat(net, endpoints['conv2'])
+                    net = layers.convolution2d(net, 128, [3, 3], scope='deconv2_1')
+                    net = layers.batch_norm(net, is_train = train, scope='deconv_bn2_1')
+                    net = layers.convolution2d(net, 128, [3, 3], scope='deconv2_2')
+                    net = layers.batch_norm(net, is_train = train, scope='deconv_bn2_2')
+                    endpoints['deconv2'] = net
 
-                net = upsample_concat(net, endpoints['conv1'])
-                net = layers.convolution2d(net, 64, [3, 3], normalizer_fn = normalizer_fn, scope='deconv1_1')
-                net = layers.convolution2d(net, 64, [3, 3], normalizer_fn = normalizer_fn, scope='deconv1_2')
-                endpoints['deconv1'] = net
+                    net = upsample_concat(net, endpoints['conv1'])
+                    net = layers.convolution2d(net, 64, [3, 3], scope='deconv1_1')
+                    net = layers.batch_norm(net, is_train = train, scope='deconv_bn1_1')
+                    net = layers.convolution2d(net, 64, [3, 3], scope='deconv1_2')
+                    net = layers.batch_norm(net, is_train = train, scope='deconv_bn1_2')
+                    endpoints['deconv1'] = net
 
 
-                #conv
-                net = layers.convolution2d(net, num_classes, [1, 1], normalizer_fn=None, activation_fn=tf.nn.sigmoid, scope='deconv0')
-                endpoints['deconv0'] = net
-                return net, endpoints 
+                    #conv
+                    net = layers.convolution2d(net, num_classes, [1, 1], activation_fn=tf.nn.sigmoid, scope='deconv0')
+                    endpoints['deconv0'] = net
+    
+    return net, endpoints 
 
 
 
