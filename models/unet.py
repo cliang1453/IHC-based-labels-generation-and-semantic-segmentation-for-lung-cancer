@@ -20,13 +20,15 @@ def upsample_concat(input_A, input_B):
 def u_net_conv(inputs, endpoints, weight_decay=0.0005, scope='vgg_16', reuse=None, train=False):
     """ Original U-Net for cell segmentataion
     http://lmb.informatik.uni-freiburg.de/people/ronneber/u-net/
-    Original x is [batch_size, 572, 572, ?], pad is VALID
+    Original x is [batch_size, 572, 572, ?], pad is SAME
+    weight initlizer -- truncated normal
     """
     with arg_scope([layers.convolution2d, layers.max_pool2d], padding='SAME'):
         with arg_scope([layers.convolution2d], rate=1,
                         activation_fn= None, 
                         normalizer_fn = None,  
                         weights_initializer=tf.truncated_normal_initializer(stddev=0.01),
+                        #weights_initializer = initializers.xavier_initializer(),
                         weights_regularizer=layers.l2_regularizer(weight_decay)):
             with arg_scope([layers.batch_norm], 
                             decay = 0.999, 
