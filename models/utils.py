@@ -8,9 +8,11 @@ import matplotlib
 matplotlib.use('Qt4Agg')
 import matplotlib.pyplot as plt
 
-num_class = 3
-
-label_colours = [(255,0,0),(0,0,255),(204,204,255)]
+num_class = 4
+label_colours = [(224, 224, 224), (255, 0, 0), (178, 102, 255), (0, 0, 0)]
+# class 0: Background: (224, 224, 224)
+# class 1: Tumor : (255, 0, 0)
+# class 2: Tissue: (178, 102, 255)
 
 table_R = np.zeros(256, np.uint8)
 table_G = np.zeros(256, np.uint8)
@@ -39,6 +41,7 @@ def decode_labels_2(mask):
     Returns:
       An batch of RGB images of the same size
     """
+
     h, w = mask.shape
     mask_R = np.zeros((h, w), np.uint8)
     mask_G = np.zeros((h, w), np.uint8)
@@ -55,6 +58,39 @@ def decode_labels_2(mask):
 
     return im
 
+def decode_labels_2_with_mask(mask, weights):
+    """Decode batch of segmentation masks.
+    
+    Args:
+      label_batch: result of inference after taking argmax.
+    
+    Returns:
+      An batch of RGB images of the same size
+    """
+
+    im = decode_labels_2(mask)
+    #print(im.shape)
+
+    im[:,:,0] = np.multiply(im[:,:,0], weights)
+    im[:,:,1] = np.multiply(im[:,:,1], weights)
+    im[:,:,2] = np.multiply(im[:,:,2], weights)
+
+    return im
+
+def add_pred_mask(mask, weights, mask_class_index=4):
+  #print(weights)
+  #print(mask)
+  h, w = weights.shape
+  inverse_weights = np.ones((h, w), np.uint8)
+  inverse_weights = np.multiply(mask_class_index, np.subtract(inverse_weights, weights))
+  # print(inverse_weights.shape)
+  # print(mask.shape)
+  # print(weights.shape)
+  updated_im = np.add(np.multiply(mask, weights), inverse_weights)
+
+  return updated_im
+  
+  
 
 def decode_labels(mask, num_images=1, num_classes=3):
     """Decode batch of segmentation masks.
@@ -71,15 +107,30 @@ def decode_labels(mask, num_images=1, num_classes=3):
     assert(n >= num_images), 'Batch size %d should be greater or equal than number of images to save %d.' % (n, num_images)
     outputs = np.zeros((num_images, h, w, 3), dtype=np.uint8)
     for i in range(num_images):
-      # img = Image.new('RGB', (len(mask[i, 0]), len(mask[i])))
-      # pixels = img.load()
-      # for j_, j in enumerate(mask[i, :, :, 0]):
-      #     for k_, k in enumerate(j):
-      #         if k < num_classes:
-      #             pixels[k_,j_] = label_colours[k]
-      # outputs[i] = np.array(img)
         outputs[i] = decode_labels_2(mask[i, :, :, 0])
     return outputs
+
+
+def decode_labels_with_mask(mask, weights, num_images=1, num_classes=3):
+    """Decode batch of segmentation masks.
+    
+    Args:
+      mask: result of inference after taking argmax.
+      num_images: number of images to decode from the batch.
+      num_classes: number of classes to predict (including background).
+    
+    Returns:
+      A batch with num_images RGB images of the same size as the input. 
+    """
+    n, h, w, c = mask.shape
+    assert(n >= num_images), 'Batch size %d should be greater or equal than number of images to save %d.' % (n, num_images)
+    outputs = np.zeros((num_images, h, w, 3), dtype=np.uint8)
+    for i in range(num_images):
+        outputs[i] = decode_labels_2(mask[i, :, :, 0])
+        outputs[i] = np.multiply(outputs[i], weights[i])
+    return outputs
+
+
 
 
 def inv_preprocess(imgs, num_images, img_mean):
@@ -99,4 +150,24 @@ def inv_preprocess(imgs, num_images, img_mean):
     outputs = np.zeros((num_images, h, w, c), dtype=np.uint8)
     for i in range(num_images):
         outputs[i] = (imgs[i] + img_mean).astype(np.uint8)
+    return outputs
+
+
+def inv_preprocess_with_mask(imgs, weights, num_images, img_mean):
+    """Inverse preprocessing of the batch of images.
+       Add the mean vector and convert from BGR to RGB.
+       
+    Args:
+      imgs: batch of input images.
+      num_images: number of images to apply the inverse transformations on.
+      img_mean: vector of mean colour values.
+  
+    Returns:
+      The batch of the size num_images with the same spatial dimensions as the input.
+    """
+    n, h, w, c = imgs.shape
+    assert(n >= num_images), 'Batch size %d should be greater or equal than number of images to save %d.' % (n, num_images)
+    outputs = np.zeros((num_images, h, w, c), dtype=np.uint8)
+    for i in range(num_images):
+        outputs[i] = np.multiply((imgs[i] + img_mean).astype(np.uint8), weights[i])
     return outputs

@@ -86,7 +86,7 @@ class ImageReader(object):
     #                                                shuffle=is_training) # Not shuffling if it is val.
     #     self.image, self.label, self.original_size = read_images_from_disk(self.queue, self.input_size, random_scale, image_mean)
 
-    def __init__(self, dataset_name, dataset_split_name, dataset_dir, input_size, coord, image_mean):
+    def __init__(self, dataset_name, dataset_split_name, dataset_dir, input_size, coord, image_mean, eva_trainset):
         '''Initialise an ImageReader.
 
         Args:
@@ -97,12 +97,10 @@ class ImageReader(object):
           coord: TensorFlow queue coordinator.
         '''
         self.input_size = input_size
-
         self.coord = coord
 
         dataset = dataset_factory.get_dataset(dataset_name, dataset_split_name, dataset_dir)
-        is_training = dataset_split_name=='train'
-
+        is_training = (dataset_split_name =='train' and eva_trainset==False)
         num_epochs = None if is_training else 1
 
         with tf.name_scope(dataset_name + '_data_provider'):
@@ -114,25 +112,39 @@ class ImageReader(object):
                 shuffle=is_training,
                 num_epochs=num_epochs)
 
-        [filename, img, label, h, w] = provider.get(['img_filename','image', 'segmask', 'height', 'width'])
-
+        [filename, img, stained, labelID, labelRGB, labelMask, h, w] = provider.get(['img_filename', 'image', 'stained', 'labelID', 
+                                                                       'labelRGB', 'labelMask', 'width', 'height'])
 
         h = tf.to_int32(h)
         w = tf.to_int32(w)
-        self.original_size = tf.concat([h,w], axis=0)#tf.squeeze(tf.stack([h,w],axis=0))
+        self.original_size = tf.concat([h,w], axis=0)
         self.image_name = filename
 
         if input_size is not None:
             h, w = input_size
             new_shape = tf.constant([h, w], dtype=tf.int32)
+            
             img = tf.image.resize_images(img, new_shape)
-            label = tf.image.resize_nearest_neighbor(tf.expand_dims(label, 0), new_shape)
-            label = tf.squeeze(label, squeeze_dims=[0])  # resize_image_with_crop_or_pad accepts 3D-tensor.
+            stained = tf.image.resize_images(stained, new_shape)
+            labelRGB = tf.image.resize_images(labelRGB, new_shape)
+            
+            labelID = tf.image.resize_nearest_neighbor(tf.expand_dims(labelID, 0), new_shape)
+            labelID = tf.squeeze(labelID, squeeze_dims=[0])  # resize_image_with_crop_or_pad accepts 3D-tensor.
+            labelMask = tf.image.resize_nearest_neighbor(tf.expand_dims(labelMask, 0), new_shape)
+            labelMask = tf.squeeze(labelMask, squeeze_dims=[0])  # resize_image_with_crop_or_pad accepts 3D-tensor.
+        
         # Extract mean.
         img -= image_mean
+        stained -= image_mean
+        labelRGB -= image_mean
 
         self.image = img
-        self.label = label
+        self.label = labelID
+        self.mask = labelMask
+
+        self.stained = stained
+        self.labelRGB = labelRGB
+
 
 
     def dequeue(self, num_elements):
@@ -144,12 +156,10 @@ class ImageReader(object):
         Returns:
           Two tensors of size (batch_size, h, w, {3,1}) for images and masks.'''
 
-        image_batch, label_batch = tf.train.batch([self.image, self.label],
+        image_batch, label_batch, mask_batch, stained_batch, labelRGB_batch = tf.train.batch([self.image, self.label, self.mask, self.stained, self.labelRGB],
                                                   num_elements, num_threads=4)
-        batch_queue = slim.prefetch_queue.prefetch_queue([image_batch, label_batch], num_threads=4)
+        batch_queue = slim.prefetch_queue.prefetch_queue([image_batch, label_batch, mask_batch, stained_batch, labelRGB_batch], num_threads=4)
 
-        image_batch, label_batch = batch_queue.dequeue()
+        image_batch, label_batch, mask_batch, stained_batch, labelRGB_batch = batch_queue.dequeue()
 
-        return image_batch, label_batch
-
-    
+        return image_batch, label_batch, mask_batch, stained_batch, labelRGB_batch

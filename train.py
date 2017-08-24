@@ -17,25 +17,23 @@ import pprint
 import tensorflow as tf
 import numpy as np
 
-from models import DeepLabLFOVModel, ImageReader, decode_labels, inv_preprocess
+from models import DeepLabLFOVModel, ImageReader, decode_labels, decode_labels_with_mask, inv_preprocess, inv_preprocess_with_mask
 
 
 BATCH_SIZE = 8
-#DATA_DIRECTORY = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/dataset/tfexample/'
-DATA_DIRECTORY = '/media/chen/data1/Lung_project/dataset/tfexample/'
+DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/tfexample/'
 DATASET_NAME = 'heihc' #dataset name consists of all lower case letters
 INPUT_SIZE = '500,500'
-LEARNING_RATE = 1e-4
-NUM_STEPS = 30001
+LEARNING_RATE = 1e-3
+NUM_STEPS = 70001
 RANDOM_SCALE = True
-#RESTORE_FROM = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/dataset/init/SEC_init.ckpt'
-RESTORE_FROM = '/media/chen/data1/Lung_project/dataset/init/SEC_init.ckpt'
-FINETUNE_FROM = None
-SAVE_NUM_IMAGES = 2
+RESTORE_FROM = None
+RESTORE_FROM = '/media/chen/data/Lung_project/dataset/init/SEC_init.ckpt' #None #
+FINETUNE_FROM = None#'/media/chen/data/Lung_project/deeplab_lfov_test/snapshot_2/model.ckpt-70000'
+SAVE_NUM_IMAGES = 4
 SAVE_PRED_EVERY = 20
 SAVE_MODEL_EVERY = 1000
-# SNAPSHOT_DIR = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/deeplab_test/snapshot_1/'
-SNAPSHOT_DIR = '/media/chen/data1/Lung_project/deeplab_lfov_test/snapshot_1/'
+SNAPSHOT_DIR = '/media/chen/data/Lung_project/deeplab_lfov_test/snapshot_3_lrdecay_no_dropout/'
 NUM_CLASS = 3
 IMG_MEAN = np.array((191.94056702, 147.93313599, 179.39755249), dtype=np.float32) # This is in R,G,B order
 
@@ -118,38 +116,30 @@ def main():
     
     # Load reader.
     with tf.name_scope("create_inputs"):
-        # reader = ImageReader(
-        #     args.data_dir,
-        #     args.data_list,
-        #     is_training=True,
-        #     input_size=input_size,
-        #     random_scale=False,
-        #     coord=coord,
-        #     image_mean=IMG_MEAN)
         reader = ImageReader(dataset_name=args.dataset_name,
                              dataset_split_name='train',
                              dataset_dir=args.data_dir,
                              input_size=input_size,
                              coord=coord,
-                             image_mean=IMG_MEAN)
-        image_batch, label_batch = reader.dequeue(args.batch_size)
+                             image_mean=IMG_MEAN,
+                             eva_trainset = False)
+        image_batch, label_batch, mask_batch, stained_batch, labelRGB_batch = reader.dequeue(args.batch_size)
     
     # Create network.
     net = DeepLabLFOVModel(args.number_class)
 
-
     # Define the loss and optimisation parameters.
-    pred, loss = net.loss(image_batch, label_batch)
+    pred, loss = net.loss(image_batch, label_batch, mask_batch)
 
     global_step = tf.Variable(0, trainable=False)
     starter_learning_rate = args.learning_rate
     
     # learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
     #                                            1000, 0.96, staircase=True)
-    # learning_rate = tf.train.polynomial_decay(starter_learning_rate, global_step, args.num_steps,
-    #                                         end_learning_rate=0.00, power=0.9,
-    #                                         cycle=False, name=None)
-    learning_rate = starter_learning_rate
+    learning_rate = tf.train.polynomial_decay(starter_learning_rate, global_step, args.num_steps,
+                                            end_learning_rate=0.00, power=0.9,
+                                            cycle=False, name=None)
+    #learning_rate = starter_learning_rate
 
     optimiser = tf.train.AdamOptimizer(learning_rate=learning_rate)
     #optimiser = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9, use_locking=False, use_nesterov=False)
@@ -163,12 +153,14 @@ def main():
     tf.summary.scalar('learning_rate', learning_rate)
 
     # Image summary.
-    images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
-    labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.number_class], tf.uint8)
-    preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.number_class], tf.uint8)
+    images_summary = tf.py_func(inv_preprocess_with_mask, [image_batch, mask_batch, args.save_num_images, IMG_MEAN], tf.uint8)
+    stained_summary = tf.py_func(inv_preprocess, [stained_batch, args.save_num_images, IMG_MEAN], tf.uint8)
+    labels_summary = tf.py_func(inv_preprocess, [labelRGB_batch, args.save_num_images, IMG_MEAN], tf.uint8)
+    #labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.number_class], tf.uint8)
+    preds_summary = tf.py_func(decode_labels_with_mask, [pred, mask_batch, args.save_num_images, args.number_class], tf.uint8)
     
     total_summary = tf.summary.image('images', 
-                                     tf.concat(axis=2, values=[images_summary, labels_summary, preds_summary]), 
+                                     tf.concat(axis=2, values=[images_summary, stained_summary, labels_summary, preds_summary]), 
                                      max_outputs=args.save_num_images) # Concatenate row-wise.
     final_summary = tf.summary.merge_all()
     summary_writer = tf.summary.FileWriter(args.snapshot_dir,
