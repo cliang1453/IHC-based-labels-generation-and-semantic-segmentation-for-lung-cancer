@@ -22,15 +22,20 @@ slim = tf.contrib.slim
 FILE_PATTERN = '%s_heihc-*'
 ITEMS_TO_DESCRIPTIONS = {
     'image': 'A color image of varying height and width.',
-    'segmask' : 'segmentation mask GT',
+    'stained' : 'A stained image which is the indication of GT',
+    'labelID' : 'Segmentation mask GT',
+    'labelRGB' :'Colored segmentation mask GT',
+    'labelMask' : 'Mask that exclude the out of interest region',
+
     'width': 'image width',
     'height': 'image height',
-    'img_filename': 'image file name'
+    
+    'img_filename' : 'image file name'
 }
 
 SPLITS_TO_SIZES = {
-    'train': 10000,
-    'validation': 3684,
+    'train': 2873,
+    'validation': 881,
 }
 
 NUM_CLASSES = 3

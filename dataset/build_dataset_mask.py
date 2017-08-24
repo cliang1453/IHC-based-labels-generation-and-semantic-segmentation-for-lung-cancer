@@ -77,13 +77,19 @@ import pdb
 import numpy as np
 import tensorflow as tf
 
-tf.app.flags.DEFINE_string('data_dir', '/media/chen/data/Lung_project/dataset/',
+tf.app.flags.DEFINE_string('data_dir', '/media/chen/data/Lung_project/dataset',
                            'Data directory of HE_IHC')
 
-tf.app.flags.DEFINE_string('train_list', 'train.txt',
+tf.app.flags.DEFINE_string('train_img_list', 'train_img.txt',
                            'Training data list of HE_IHC')
 
-tf.app.flags.DEFINE_string('validation_list', 'val.txt',
+tf.app.flags.DEFINE_string('train_label_list', 'train_label.txt',
+                           'Training data list of HE_IHC')
+
+tf.app.flags.DEFINE_string('validation_img_list', 'val_img.txt',
+                           'Validation data list of HE_IHC')
+
+tf.app.flags.DEFINE_string('validation_label_list', 'val_label.txt',
                            'Validation data list of HE_IHC')
 
 tf.app.flags.DEFINE_string('output_directory', '/media/chen/data/Lung_project/dataset/tfexample/',
@@ -121,8 +127,8 @@ def _bytes_feature(value):
   return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
-def _convert_to_example(image_file, image_buffer, segmask_file,
-                        segmask_buffer, height, width):
+def _convert_to_example(image_file, image_buffer, stained_file, stained_buffer, labelID_file, labelID_buffer, 
+                        labelRGB_file, labelRGB_buffer, labelMask_file, labelMask_buffer, height, width):
   """Build an Example proto for an example.
 
   Args:
@@ -139,24 +145,49 @@ def _convert_to_example(image_file, image_buffer, segmask_file,
   """
 
   colorspace = 'RGB'
+
   image_channels = 3
-  segmask_channels = 1
+  stained_channels = 3
+  labelID_channels = 1
+  labelRGB_channels = 3
+  labelMask_channels = 1
+
   image_format = 'PNG'
-  segmask_format = 'PNG'
+  stained_format = 'PNG'
+  labelID_format = 'PNG'
+  labelRGB_format = 'PNG'
+  labelMask_format = 'PNG'
+
+
   example = tf.train.Example(features=tf.train.Features(feature={
       'image/height': _int64_feature(height),
       'image/width': _int64_feature(width),
+
       'image/format': _bytes_feature(image_format),
-      #'image/colorspace': _bytes_feature(colorspace),
       'image/channels': _int64_feature(image_channels),
-      #'image/class/label': _int64_feature(label),
-      #'image/class/text': _bytes_feature(text),
       'image/image_file': _bytes_feature(os.path.basename(image_file)),
       'image/encoded': _bytes_feature(image_buffer),
-      'segmask/segmask_file': _bytes_feature(os.path.basename(segmask_file)),
-      'segmask/encoded': _bytes_feature(segmask_buffer),
-      'segmask/format': _bytes_feature(segmask_format),
-      'segmask/channel': _int64_feature(segmask_channels)}))
+      
+      'stained/stained_file': _bytes_feature(os.path.basename(stained_file)),
+      'stained/encoded': _bytes_feature(stained_buffer),
+      'stained/format': _bytes_feature(stained_format),
+      'stained/channel': _int64_feature(stained_channels),
+
+      'labelID/labelID_file': _bytes_feature(os.path.basename(labelID_file)),
+      'labelID/encoded': _bytes_feature(labelID_buffer),
+      'labelID/format': _bytes_feature(labelID_format),
+      'labelID/channel': _int64_feature(labelID_channels),
+
+      'labelRGB/labelRGB_file': _bytes_feature(os.path.basename(labelRGB_file)),
+      'labelRGB/encoded': _bytes_feature(labelRGB_buffer),
+      'labelRGB/format': _bytes_feature(labelRGB_format),
+      'labelRGB/channel': _int64_feature(labelRGB_channels),
+
+      'labelMask/labelMask_file': _bytes_feature(os.path.basename(labelMask_file)),
+      'labelMask/encoded': _bytes_feature(labelMask_buffer),
+      'labelMask/format': _bytes_feature(labelMask_format),
+      'labelMask/channel': _int64_feature(labelMask_channels)}))
+  
   return example
 
 
@@ -295,8 +326,8 @@ def _process_segmask(filename, coder):
   return segmask_data, height, width
 
 
-def _process_image_files_batch(coder, thread_index, ranges, name, image_files,
-                               segmask_files, num_shards):
+def _process_image_files_batch(coder, thread_index, ranges, name, image_files, stained_files, labelID_files, labelRGB_files, labelMask_files,
+                               num_shards):
   """Processes and saves list of images as TFRecord in 1 thread.
 
   Args:
@@ -334,27 +365,28 @@ def _process_image_files_batch(coder, thread_index, ranges, name, image_files,
     files_in_shard = np.arange(shard_ranges[s], shard_ranges[s + 1], dtype=int)
     for i in files_in_shard:
       image_file = image_files[i]
-      segmask_file = segmask_files[i]
+      stained_file = stained_files[i]
+      labelID_file = labelID_files[i]
+      labelRGB_file = labelRGB_files[i]
+      labelMask_file = labelMask_files[i]
 
       image_buffer, height, width = _process_image(image_file, coder)
-      segmask_buffer, segmask_height, segmask_width = _process_segmask(segmask_file, coder)
-      #image buffer -- all png
-      #segmask_buffer -- all png
+      stained_buffer, stained_height, stained_width = _process_image(stained_file, coder)
+      labelID_buffer, labelID_height, labelID_width = _process_segmask(labelID_file, coder)
+      labelRGB_buffer, labelRGB_height, labelRGB_width = _process_image(labelRGB_file, coder)
+      labelMask_buffer, labelMask_height, labelMask_width = _process_segmask(labelMask_file, coder)
 
-      if height!=segmask_height:
-        print(segmask_file)
+      if height!=stained_height:
         print('height not equal')
-        print(height)
         continue
-      if width!=segmask_width:
+      if width!=stained_width:
         continue
 
+      assert height == stained_height
+      assert width == stained_width
 
-      assert height == segmask_height
-      assert width == segmask_width
-
-      example = _convert_to_example(image_file, image_buffer, segmask_file,
-                                    segmask_buffer, height, width)
+      example = _convert_to_example(image_file, image_buffer, stained_file, stained_buffer, labelID_file, labelID_buffer, 
+                                    labelRGB_file, labelRGB_buffer, labelMask_file, labelMask_buffer, height, width)
       writer.write(example.SerializeToString())
       shard_counter += 1
       counter += 1
@@ -373,7 +405,7 @@ def _process_image_files_batch(coder, thread_index, ranges, name, image_files,
   sys.stdout.flush()
 
 
-def _process_image_files(name, image_files, segmask_files, num_shards):
+def _process_image_files(name, image_files, stained_files, labelID_files, labelRGB_files, labelMask_files, num_shards):
   """Process and save list of images as TFRecord of Example protos.
 
   Args:
@@ -383,7 +415,7 @@ def _process_image_files(name, image_files, segmask_files, num_shards):
     labels: list of integer; each integer identifies the ground truth
     num_shards: integer number of shards for this data set.
   """
-  assert len(image_files) == len(segmask_files)
+  assert len(image_files) == len(stained_files)
 
   # Break all images into batches with a [ranges[i][0], ranges[i][1]].
   spacing = np.linspace(0, len(image_files), FLAGS.num_threads + 1).astype(np.int)
@@ -403,7 +435,7 @@ def _process_image_files(name, image_files, segmask_files, num_shards):
   coder = ImageCoder()
   threads = []
   for thread_index in xrange(len(ranges)):
-    args = (coder, thread_index, ranges, name, image_files, segmask_files,
+    args = (coder, thread_index, ranges, name, image_files, stained_files, labelID_files, labelRGB_files, labelMask_files,
             num_shards)
     t = threading.Thread(target=_process_image_files_batch, args=args)
     t.start()
@@ -415,15 +447,25 @@ def _process_image_files(name, image_files, segmask_files, num_shards):
         (datetime.now(), len(image_files)))
   sys.stdout.flush()
 
-def _read_labels(data_list, data_dir):
+def _read_labels(files_img_list, files_label_list, data_dir):
 
-  image_files, segmask_files = [], []
-  print('Processing lists of images from %s.' % data_list)
-  with open(data_list, 'r') as f:
+  image_files, stained_files, labelID_files, labelRGB_files, labelMask_files = [], [], [], [], []
+  
+  print('Processing lists of images from %s.' % files_img_list)
+  with open(files_img_list, 'r') as f:
     for line in f:
-      image, mask = line.strip("\n").split(' ')
+      image = line.strip("\n")
       image_files.append(data_dir + image)
-      segmask_files.append(data_dir + mask)
+
+  print('Processing lists of images from %s.' % files_label_list)
+  with open(files_label_list, 'r') as f:
+    for line in f:
+      stained, labelID, labelRGB, labelMask = line.strip("\n").split(' ')
+      stained_files.append(data_dir + stained)
+      labelID_files.append(data_dir + labelID)
+      labelRGB_files.append(data_dir + labelRGB)
+      labelMask_files.append(data_dir + labelMask)
+
 
   # Shuffle the ordering of all image files in order to guarantee
   # random ordering of the images with respect to label in the
@@ -433,12 +475,15 @@ def _read_labels(data_list, data_dir):
   random.shuffle(shuffled_index)
 
   image_files = [image_files[i] for i in shuffled_index]
-  segmask_files = [segmask_files[i] for i in shuffled_index]
+  stained_files = [stained_files[i] for i in shuffled_index]
+  labelID_files = [labelID_files[i] for i in shuffled_index]
+  labelRGB_files = [labelRGB_files[i] for i in shuffled_index]
+  labelMask_files =  [labelMask_files[i] for i in shuffled_index]
 
-  return image_files, segmask_files
+  return image_files, stained_files, labelID_files, labelRGB_files, labelMask_files
 
 
-def _process_dataset(name, files_list, num_shards, data_dir):
+def _process_dataset(name, files_img_list, files_label_list, num_shards, data_dir):
   """Process a complete data set and save it as a TFRecord.
 
   Args:
@@ -447,8 +492,8 @@ def _process_dataset(name, files_list, num_shards, data_dir):
     num_shards: integer number of shards for this data set.
     labels_file: string, path to the labels file.
   """
-  image_files, segmask_files= _read_labels(files_list, data_dir)
-  _process_image_files(name, image_files, segmask_files, num_shards)
+  image_files, stained_files, labelID_files, labelRGB_files, labelMask_files = _read_labels(files_img_list, files_label_list, data_dir)
+  _process_image_files(name, image_files, stained_files, labelID_files, labelRGB_files, labelMask_files, num_shards)
 
 
 def main(unused_argv):
@@ -460,9 +505,9 @@ def main(unused_argv):
   print('Saving results to %s' % FLAGS.output_directory)
 
   # Run it!
-  _process_dataset('validation_heihc', FLAGS.validation_list,
+  _process_dataset('validation_heihc', FLAGS.validation_img_list, FLAGS.validation_label_list,
                    FLAGS.validation_shards, FLAGS.data_dir)
-  _process_dataset('train_heihc', FLAGS.train_list,
+  _process_dataset('train_heihc', FLAGS.train_img_list, FLAGS.train_label_list,
                    FLAGS.train_shards, FLAGS.data_dir)
 
 if __name__ == '__main__':

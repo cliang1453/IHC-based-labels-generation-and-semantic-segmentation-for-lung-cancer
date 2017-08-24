@@ -55,18 +55,46 @@ def get_split(split_name, dataset_dir, file_pattern, reader,
         'image/encoded': tf.FixedLenFeature((), tf.string, default_value=''),
         'image/channels': tf.FixedLenFeature([1], tf.int64),
         'image/format': tf.FixedLenFeature((), tf.string, default_value='png'),
-        'segmask/segmask_file': tf.FixedLenFeature((), tf.string, default_value=''),
-        'segmask/encoded': tf.FixedLenFeature((), tf.string, default_value=''),
-        'segmask/channel': tf.FixedLenFeature([1], tf.int64),
-        'segmask/format': tf.FixedLenFeature((), tf.string, default_value='png')
+
+        'stained/stained_file': tf.FixedLenFeature((), tf.string, default_value=''),
+        'stained/encoded': tf.FixedLenFeature((), tf.string, default_value=''),
+        'stained/channel': tf.FixedLenFeature([1], tf.int64),
+        'stained/format': tf.FixedLenFeature((), tf.string, default_value='png'),
+
+        'labelID/labelID_file': tf.FixedLenFeature((), tf.string, default_value=''),
+        'labelID/encoded': tf.FixedLenFeature((), tf.string, default_value=''),
+        'labelID/channel': tf.FixedLenFeature([1], tf.int64),
+        'labelID/format': tf.FixedLenFeature((), tf.string, default_value='png'),
+
+        'labelRGB/labelRGB_file': tf.FixedLenFeature((), tf.string, default_value=''),
+        'labelRGB/encoded': tf.FixedLenFeature((), tf.string, default_value=''),
+        'labelRGB/channel': tf.FixedLenFeature([1], tf.int64),
+        'labelRGB/format': tf.FixedLenFeature((), tf.string, default_value='png'),
+
+        'labelMask/labelMask_file': tf.FixedLenFeature((), tf.string, default_value=''),
+        'labelMask/encoded': tf.FixedLenFeature((), tf.string, default_value=''),
+        'labelMask/channel': tf.FixedLenFeature([1], tf.int64),
+        'labelMask/format': tf.FixedLenFeature((), tf.string, default_value='png')
+        
     }
+
     items_to_handlers = {
         'image': slim.tfexample_decoder.Image('image/encoded', 'image/format', channels=3),
-        'segmask' : slim.tfexample_decoder.Image('segmask/encoded', 'segmask/format', channels=1),
+        'stained' : slim.tfexample_decoder.Image('stained/encoded', 'stained/format', channels=3),
+        'labelID' : slim.tfexample_decoder.Image('labelID/encoded', 'labelID/format', channels=1),
+        'labelRGB' : slim.tfexample_decoder.Image('labelRGB/encoded', 'labelRGB/format', channels=3),
+        'labelMask' : slim.tfexample_decoder.Image('labelMask/encoded', 'labelMask/format', channels=1),
+
         'width': slim.tfexample_decoder.Tensor('image/width'),
         'height': slim.tfexample_decoder.Tensor('image/height'),
-        'img_filename' : slim.tfexample_decoder.Tensor('image/image_file'),
+        
+        'img_filename' : slim.tfexample_decoder.Tensor('image/image_file')
+        # 'stained_filename' : slim.tfexample_decoder.Tensor('stained/stained_file'),
+        # 'labelID_filename' : slim.tfexample_decoder.Tensor('labelID/labelID_file'),
+        # 'labelRGB_filename' : slim.tfexample_decoder.Tensor('labelRGB/labelRGB_file'),
+        # 'labelMask_filename' : slim.tfexample_decoder.Tensor('labelMask/labelMask_file')
     }
+
     decoder = slim.tfexample_decoder.TFExampleDecoder(
         keys_to_features, items_to_handlers)
 
