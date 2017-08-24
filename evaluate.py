@@ -26,76 +26,24 @@ import pprint
 from models import *
 import pprint
 
-#If evaluate SYNTHIA model on cityscapes dataset
-# DATA_DIRECTORY = '/data/orcs/chen/Cityscapes'
-# DATA_LIST_PATH = './dataset/evaluation_cityscapes.txt'
-# NUM_STEPS = 500
-# INPUT_SIZE = '512,1024'
-# RESTORE_FROM = '/data/orcs/chen/dilation_test/SYNTHIA_test/snapshots_lfov/model.ckpt-89500'
-# SAVE_DIR_GRAY = '/data/orcs/chen/dilation_test/SYNTHIA_Model_CS_Test/flov_eval_gray_1_89500/'
-# SAVE_DIR_COLOR = '/data/orcs/chen/dilation_test/SYNTHIA_Model_CS_Test/flov_eval_1_89500/'
-# SAVE_IOU_EVERY = 50
-# WEIGHTS_PATH   = None
-# NUM_CLASS = 34
-# NEED_FURTHER_EVAL = True
-# IMG_MEAN = np.array((73.16,82.91,72.39), dtype=np.float32) # This is in R,G,B order
-
 #If evaluate GTA model on cityscapes dataset
-DATA_DIRECTORY = '/data/orcs/chen/Cityscapes/tfexample/'
-DATASET_NAME = 'cityscapes'
-NUM_STEPS = 500
-INPUT_SIZE = '512,1024'
-RESTORE_FROM = '/data/orcs/chen/dilation_test/GTA_to_CS_test/snapshots_update_D_first/model.ckpt-21000'
-SAVE_DIR_GRAY = '/data/orcs/chen/dilation_test/GTA_to_CS_test/test_eval_images/'
-SAVE_DIR_COLOR = None
+DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/tfexample/'
+DATASET_NAME = 'heihc'
+EVAL_UNET = False
+NUM_STEPS = 881#2873#
+INPUT_SIZE = '500,500'
+ORIGINAL_UNIFORM_SIZE = (500, 500)
+RESTORE_FROM = '/media/chen/data/Lung_project/deeplab_lfov_test/snapshot_2/model.ckpt-36000'
+SAVE_DIR_GRAY = '/media/chen/data/Lung_project/deeplab_lfov_eval/snapshot_2_36000/'
+SAVE_DIR_COLOR = '/media/chen/data/Lung_project/deeplab_lfov_eval/snapshot_2_36000_color/'
 SAVE_IOU_EVERY = 50
 WEIGHTS_PATH   = None
-NUM_CLASS = 34
+NUM_CLASS = 3
 NEED_FURTHER_EVAL = True
-IMG_MEAN = np.array((73.16,82.91,72.39), dtype=np.float32) # This is in R,G,B order
+IMG_MEAN = np.array((191.94056702, 147.93313599, 179.39755249), dtype=np.float32) # This is in R,G,B order
+MASK_CLASS_INDEX = 4
+EVA_TRAINSET = False
 
-
-#If using cityscape dataset
-# DATA_DIRECTORY = '/data/orcs/chen/Cityscapes/tfexample'
-# DATASET_NAME = 'cityscapes'
-# NUM_STEPS = 500
-# INPUT_SIZE = '512,1024'
-# RESTORE_FROM = '/data/orcs/chen/dilation_test/cityscape_test/snapshots_lfov/model.ckpt-80000'
-# SAVE_DIR_GRAY = '/data/orcs/chen/dilation_test/cityscape_test/lfov_eval_gray_1_80k/'
-# SAVE_DIR_COLOR = '/data/orcs/chen/dilation_test/cityscape_test/lfov_eval_1_80k/'
-# SAVE_IOU_EVERY = 50
-# WEIGHTS_PATH   = None
-# NUM_CLASS = 34
-# NEED_FURTHER_EVAL = True
-# IMG_MEAN = np.array((73.16,82.91,72.39), dtype=np.float32) # This is in R,G,B order
-
-# If using GTA dataset
-# DATA_DIRECTORY = '/data/orcs/chen/GTA/tfexample/'
-# #DATA_LIST_PATH = './dataset/evaluation_GTA.txt'
-# DATASET_NAME = 'gta'
-# NUM_STEPS = 6347
-# INPUT_SIZE = '512,1024'
-# RESTORE_FROM = '/data/orcs/chen/dilation_test/GTA_test/snapshots_newmean/model.ckpt-100000'
-# SAVE_DIR_GRAY = '/data/orcs/chen/dilation_test/GTA_test/newmean_eval_gray_1/'
-# SAVE_DIR_COLOR = '/data/orcs/chen/dilation_test/GTA_test/newmean_eval_1/'
-# SAVE_IOU_EVERY = 50
-# NUM_CLASS = 34
-# NEED_FURTHER_EVAL = True
-# IMG_MEAN = np.array((), dtype=np.float32) # This is in R,G,B order
-
-# If using SYNTHIA dataset
-# DATA_DIRECTORY = '/data/orcs/chen/SYNTHIA/tfexample/'
-# #DATA_LIST_PATH = './dataset/evaluation_SYNTHIA.txt'
-# DATASET_NAME = 'synthia'
-# NUM_STEPS = 1000
-# INPUT_SIZE = '760,1280'
-# RESTORE_FROM = '/data/orcs/chen/dilation_test/SYNTHIA_test/snapshots_lfov/model.ckpt-89500'
-# SAVE_DIR_GRAY = '/data/orcs/chen/dilation_test/SYNTHIA_test/lfov_eval_gray_1_89500/'
-# SAVE_DIR_COLOR = '/data/orcs/chen/dilation_test/SYNTHIA_test/lfov_eval_1_89500/'
-# SAVE_IOU_EVERY = 50
-# NUM_CLASS = 34
-# NEED_FURTHER_EVAL = True
-# IMG_MEAN = np.array((73.16,82.91,72.39), dtype=np.float32) # This is in R,G,B order
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.
@@ -105,6 +53,8 @@ def get_arguments():
     """
     parser = argparse.ArgumentParser(description="DeepLabLFOV Network")
     parser.add_argument("--data_dir", type=str, default=DATA_DIRECTORY,
+                        help="Path to the directory containing the PASCAL VOC dataset.")
+    parser.add_argument("--eval_unet", type=str, default=EVAL_UNET,
                         help="Path to the directory containing the PASCAL VOC dataset.")
     # parser.add_argument("--data_list", type=str, default=DATA_LIST_PATH,
     #                     help="Path to the file listing the images in the dataset.")
@@ -126,6 +76,9 @@ def get_arguments():
                         help="number of classes. "
                              "If not set, default to be 34.")
     parser.add_argument("--need_further_eval", type=bool, default=NEED_FURTHER_EVAL,
+                        help="need further accuracy evaluation."
+                             "If not set, default to be True.")
+    parser.add_argument("--mask_class_index", type=int, default=MASK_CLASS_INDEX,
                         help="need further accuracy evaluation."
                              "If not set, default to be True.")
     return parser.parse_args()
@@ -198,33 +151,32 @@ def main():
 
     # Load reader.
     with tf.name_scope("create_inputs"):
-        # reader = ImageReader(
-        #     args.data_dir,
-        #     args.data_list,
-        #     is_training = False,
-        #     input_size=input_size,
-        #     random_scale=False,
-        #     coord=coord,
-        #     image_mean=IMG_MEAN)
         reader = ImageReader(dataset_name=args.dataset_name,
                              dataset_split_name='validation',
                              dataset_dir=args.data_dir,
                              input_size=input_size,
                              coord=coord,
-                             image_mean=IMG_MEAN)
+                             image_mean=IMG_MEAN,
+                             eva_trainset = EVA_TRAINSET)
 
-        image, label, image_name= reader.image, reader.label, reader.image_name
+        image, label, mask, image_name= reader.image, reader.label, reader.mask, reader.image_name
 
     image_batch, label_batch = tf.expand_dims(image, axis=0), tf.expand_dims(label, axis=0) # Add the batch dimension.
     # Create network.
     #net = DeepLabV2Model(args.number_class)
-    net = DeepLabLFOVModel(args.number_class)
+    if args.eval_unet:
+        net = UnetModel(args.number_class)
+    else:
+        net = DeepLabLFOVModel(args.number_class)
     
     # Predictions.
     pred = net.preds(image_batch)
 
     #upsampling the pred to be the original size
-    pred = tf.image.resize_nearest_neighbor(pred, reader.original_size)
+    if(reader.original_size is not ORIGINAL_UNIFORM_SIZE):
+        pred = tf.image.resize_nearest_neighbor(pred, ORIGINAL_UNIFORM_SIZE)
+    else:
+        pred = tf.image.resize_nearest_neighbor(pred, reader.original_size)
 
     # Which variables to load.
     trainable = tf.trainable_variables()
@@ -277,18 +229,17 @@ def main():
         #_ = update_op.eval(session=sess)
         #preds, _, conf_updates, cnf_matrix = sess.run([pred, update_op, conf_update, conf])
         #preds, _= sess.run([pred, update_op])
-        preds, filenames = sess.run([pred, image_name])
-        file_paths.append(filenames)
+        preds, masks, filenames = sess.run([pred, mask, image_name])
 
         if args.need_further_eval:
             if args.save_dir_gray is not None:
-                img = preds[0, :, :, 0]
+                img = add_pred_mask(preds[0, :, :, 0], masks[:, :, 0], args.mask_class_index)
                 im = Image.fromarray(img)
                 im_name = os.path.basename(filenames)
                 im.save(args.save_dir_gray + im_name)
 
         if args.save_dir_color is not None:
-            img = decode_labels_2(preds[0, :, :, 0])
+            img = decode_labels_2_with_mask(preds[0, :, :, 0], masks[:, :, 0])
             im = Image.fromarray(img)
             im_name = os.path.basename(filenames)
             im.save(args.save_dir_color + im_name)
