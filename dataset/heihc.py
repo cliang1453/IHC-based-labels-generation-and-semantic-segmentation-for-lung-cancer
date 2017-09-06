@@ -34,8 +34,8 @@ ITEMS_TO_DESCRIPTIONS = {
 }
 
 SPLITS_TO_SIZES = {
-    'train': 2873,
-    'validation': 881,
+    'train': 2803,
+    'validation': 869,
 }
 
 NUM_CLASSES = 3
