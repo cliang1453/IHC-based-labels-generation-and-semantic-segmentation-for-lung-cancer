@@ -68,7 +68,7 @@ class UnetModel(object):
         raw_output = tf.expand_dims(raw_output, axis=3)  # Create 4D-tensor.
         return tf.cast(raw_output, tf.uint8)
 
-    def loss(self, img_batch, label_batch):
+    def loss(self, img_batch, label_batch, mask_batch):
         """Create the network, run inference on the input batch and compute loss.
 
         Args:
@@ -79,22 +79,23 @@ class UnetModel(object):
         """
         raw_output = self._create_network(tf.cast(img_batch, tf.float32), dropout=True)
 
-        # Get pred mask
+        # Get prediction output
         raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(img_batch)[1:3, ])
         raw_output_up = tf.argmax(raw_output_up, axis=3)
         raw_output_up = tf.expand_dims(raw_output_up, axis=3)  # Create 4D-tensor.
         pred = tf.cast(raw_output_up, tf.uint8)
-
-        # Compute the loss
         prediction = tf.reshape(raw_output, [-1, self.n_classes])
 
-        # Need to resize labels and convert using one-hot encoding.
-        label_batch = self.prepare_label(label_batch, tf.stack(raw_output.get_shape()[1:3]))
-        gt = tf.reshape(label_batch, [-1, self.n_classes])
+        # Prepare ground truth output
+        label_batch = tf.image.resize_nearest_neighbor(label_batch, tf.stack(raw_output.get_shape()[1:3]))
+        gt = tf.expand_dims(tf.cast(tf.reshape(label_batch, [-1]), tf.int32), axis=1)
 
-        # Pixel-wise softmax loss.
-        
-        loss = tf.nn.softmax_cross_entropy_with_logits(logits=prediction, labels=gt)
-        reduced_loss = tf.reduce_mean(loss)
+        # Prepare mask
+        resized_mask_batch = tf.image.resize_nearest_neighbor(mask_batch, tf.stack(raw_output.get_shape()[1:3]))
+        resized_mask_batch = tf.cast(tf.reshape(resized_mask_batch, [-1]), tf.float32)
+        mask = tf.reshape(resized_mask_batch, gt.get_shape())
 
-        return pred, reduced_loss
+        # Calculate the masked loss 
+        loss = tf.losses.sparse_softmax_cross_entropy(logits=prediction, labels=gt, weights=mask)
+
+        return pred, loss
