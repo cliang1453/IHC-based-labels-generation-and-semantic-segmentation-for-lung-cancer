@@ -27,15 +27,16 @@ from models import *
 import pprint
 
 #If evaluate GTA model on cityscapes dataset
-DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/tfexample/'
+DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/updated_tfexample_2/'
+IS_TRAINING = True
 DATASET_NAME = 'heihc'
-EVAL_UNET = False
-NUM_STEPS = 881#2873#
-INPUT_SIZE = '500,500'
+EVAL_UNET = True
+NUM_STEPS = 869#2803
+INPUT_SIZE = '512,512'
 ORIGINAL_UNIFORM_SIZE = (500, 500)
-RESTORE_FROM = '/media/chen/data/Lung_project/deeplab_lfov_test/snapshot_2/model.ckpt-36000'
-SAVE_DIR_GRAY = '/media/chen/data/Lung_project/deeplab_lfov_eval/snapshot_2_36000/'
-SAVE_DIR_COLOR = '/media/chen/data/Lung_project/deeplab_lfov_eval/snapshot_2_36000_color/'
+RESTORE_FROM = '/media/chen/data/Lung_project/unet_test/snapshot_dropout_lrdecay_BN_4/model.ckpt-9000'
+SAVE_DIR_GRAY = '/media/chen/data/Lung_project/unet_eval/snapshot_dropout_lrdecay_BN_4_9000/'
+SAVE_DIR_COLOR = None #'/media/chen/data/Lung_project/unet_eval/snapshot_dropout_lrdecay_noBN_1_7000_color/'
 SAVE_IOU_EVERY = 50
 WEIGHTS_PATH   = None
 NUM_CLASS = 3
@@ -54,8 +55,11 @@ def get_arguments():
     parser = argparse.ArgumentParser(description="DeepLabLFOV Network")
     parser.add_argument("--data_dir", type=str, default=DATA_DIRECTORY,
                         help="Path to the directory containing the PASCAL VOC dataset.")
+    parser.add_argument("--is_training", type=str, default=IS_TRAINING,
+                        help="Path to the directory containing the PASCAL VOC dataset.")
     parser.add_argument("--eval_unet", type=str, default=EVAL_UNET,
                         help="Path to the directory containing the PASCAL VOC dataset.")
+
     # parser.add_argument("--data_list", type=str, default=DATA_LIST_PATH,
     #                     help="Path to the file listing the images in the dataset.")
     parser.add_argument("--dataset_name", type=str, default=DATASET_NAME,
@@ -138,10 +142,11 @@ def main():
       os.makedirs(args.save_dir_gray)
 
     # print a arg file
-    with open(args.save_dir_gray + 'parameters.txt', 'w') as f:
-        dic = vars(args)
-        pp = pprint.PrettyPrinter(indent=1, width=80, depth=None, stream=f)
-        pp.pprint(dic)
+    if args.save_dir_gray is not None:
+        with open(args.save_dir_gray + 'parameters.txt', 'w') as f:
+            dic = vars(args)
+            pp = pprint.PrettyPrinter(indent=1, width=80, depth=None, stream=f)
+            pp.pprint(dic)
 
     # Create queue coordinator.
     coord = tf.train.Coordinator()
@@ -165,18 +170,22 @@ def main():
     # Create network.
     #net = DeepLabV2Model(args.number_class)
     if args.eval_unet:
-        net = UnetModel(args.number_class)
+        net = UnetModel(args.number_class, args.is_training)
     else:
         net = DeepLabLFOVModel(args.number_class)
     
     # Predictions.
     pred = net.preds(image_batch)
 
-    #upsampling the pred to be the original size
-    if(reader.original_size is not ORIGINAL_UNIFORM_SIZE):
-        pred = tf.image.resize_nearest_neighbor(pred, ORIGINAL_UNIFORM_SIZE)
+    # upsampling the pred to be the original size
+    if args.eval_unet == False:
+        if(reader.original_size is not ORIGINAL_UNIFORM_SIZE):
+            pred = tf.image.resize_nearest_neighbor(pred, ORIGINAL_UNIFORM_SIZE)
+        else:
+            pred = tf.image.resize_nearest_neighbor(pred, reader.original_size)
     else:
-        pred = tf.image.resize_nearest_neighbor(pred, reader.original_size)
+        pred = tf.image.resize_nearest_neighbor(pred, ORIGINAL_UNIFORM_SIZE)
+        mask = tf.squeeze(tf.image.resize_nearest_neighbor(tf.expand_dims(mask, axis=0), ORIGINAL_UNIFORM_SIZE), axis=0)
 
     # Which variables to load.
     trainable = tf.trainable_variables()

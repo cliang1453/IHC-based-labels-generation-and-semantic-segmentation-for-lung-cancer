@@ -21,18 +21,19 @@ from models import UnetModel, ImageReader, decode_labels, decode_labels_with_mas
 
 
 BATCH_SIZE = 4
-DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/updated_tfexample_2/'
+IS_TRAINING = True
+DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/updated_tfexample_2/' #'/media/chen/data/Lung_project/dataset/updated_tfexample_2/'
 DATASET_NAME = 'heihc' #dataset name consists of all lower case letters
 INPUT_SIZE = '512,512'
-LEARNING_RATE = 1e-3
-NUM_STEPS = 40001
+LEARNING_RATE = 1e-4
+NUM_STEPS = 10001
 RANDOM_SCALE = True
-RESTORE_FROM = None#'/media/chen/data/Lung_project/dataset/init/SEC_init.ckpt'
+RESTORE_FROM = None #'/media/chen/data/Lung_project/dataset/init/SEC_init.ckpt'
 FINETUNE_FROM = None
 SAVE_NUM_IMAGES = 4
 SAVE_PRED_EVERY = 20
 SAVE_MODEL_EVERY = 1000
-SNAPSHOT_DIR = '/media/chen/data/Lung_project/unet_test/snapshot_1/'
+SNAPSHOT_DIR = '/media/chen/data/Lung_project/unet_test/snapshot_dropout_lrconstant_BN_4/'
 NUM_CLASS = 3
 IMG_MEAN = np.array((191.94056702, 147.93313599, 179.39755249), dtype=np.float32) # This is in R,G,B order
 
@@ -45,6 +46,8 @@ def get_arguments():
     parser = argparse.ArgumentParser(description="DeepLabLFOV Network")
     parser.add_argument("--batch_size", type=int, default=BATCH_SIZE,
                         help="Number of images sent to the network in one step.")
+    parser.add_argument("--is_training", type=str, default=IS_TRAINING,
+                        help="Path to the directory containing the PASCAL VOC dataset.")
     parser.add_argument("--data_dir", type=str, default=DATA_DIRECTORY,
                         help="Path to the directory containing the PASCAL VOC dataset.")
     parser.add_argument("--dataset_name", type=str, default=DATASET_NAME,
@@ -133,27 +136,49 @@ def main():
         image_batch, label_batch, mask_batch, stained_batch, labelRGB_batch = reader.dequeue(args.batch_size)
     
     # Create network.
-    net = UnetModel(args.number_class)
+    net = UnetModel(args.number_class, args.is_training)
+    # starter_learning_rate = args.learning_rate
+    # # learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
+    # #                                            1000, 0.96, staircase=True)
+   
+    
+    # #learning_rate = starter_learning_rate
+    
+
+    # # Define the loss and optimisation parameters.
+    # update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    # with tf.control_dependencies(update_ops):
+    #     pred, loss = net.loss(image_batch, label_batch, mask_batch)
+    #     global_step = tf.Variable(0, trainable=False)
+    #     learning_rate = tf.train.polynomial_decay(starter_learning_rate, global_step, args.num_steps,
+    #                                         end_learning_rate=0.00, power=0.9,
+    #                                         cycle=False, name=None)
+    #     optimiser = tf.train.AdamOptimizer(learning_rate=learning_rate)
+    #     # optimiser = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9, use_locking=False, use_nesterov=False)
+    #     trainable = tf.trainable_variables()
+    #     # Passing global_step to minimize() will increment it at each step.
+    #     optim = optimiser.minimize(loss, var_list=trainable, global_step=global_step)
+    #     # pred = net.preds(image_batch)
+
+     # Define the loss and optimisation parameters.
+    pred, loss = net.loss(image_batch, label_batch, mask_batch)
+
+    global_step = tf.Variable(0, trainable=False)
+    starter_learning_rate = args.learning_rate
+    
     # learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
     #                                            1000, 0.96, staircase=True)
     # learning_rate = tf.train.polynomial_decay(starter_learning_rate, global_step, args.num_steps,
     #                                         end_learning_rate=0.00, power=0.9,
     #                                         cycle=False, name=None)
-    starter_learning_rate = args.learning_rate
     learning_rate = starter_learning_rate
-    
 
-    # Define the loss and optimisation parameters.
-    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    with tf.control_dependencies(update_ops):
-        pred, loss = net.loss(image_batch, label_batch, mask_batch)
-        global_step = tf.Variable(0, trainable=False)
-        optimiser = tf.train.AdamOptimizer(learning_rate=learning_rate)
-        # optimiser = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9, use_locking=False, use_nesterov=False)
-        trainable = tf.trainable_variables()
-        # Passing global_step to minimize() will increment it at each step.
-        optim = optimiser.minimize(loss, var_list=trainable, global_step=global_step)
-        # pred = net.preds(image_batch)
+    optimiser = tf.train.AdamOptimizer(learning_rate=learning_rate)
+    #optimiser = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9, use_locking=False, use_nesterov=False)
+    trainable = tf.trainable_variables()
+    # Passing global_step to minimize() will increment it at each step.
+    optim = optimiser.minimize(loss, var_list=trainable, global_step=global_step)
+    # pred = net.preds(image_batch)
 
     
     # Scalar summary.

@@ -14,12 +14,13 @@ class UnetModel(object):
     there for details.
     """
 
-    def __init__(self, number_class=3):
+    def __init__(self, number_class=3, is_training=True):
 
         """Create the model"""
         self.n_classes = number_class
+        self.is_training = is_training
 
-    def _create_network(self, input_batch, dropout):
+    def _create_network(self, input_batch, dropout = False, is_training = True):
         """Construct DeepLab-LargeFOV network.
 
         Args:
@@ -29,12 +30,7 @@ class UnetModel(object):
         Returns:
           A downsampled segmentation mask.
         """
-        if dropout is False:
-            train = False
-        else:
-            train = True
-
-        net, _ = unet.unet(input_batch, self.n_classes, train=train, dropout=dropout, weight_decay=0.0005)
+        net, _ = unet.unet(input_batch, self.n_classes, is_training = is_training, dropout = dropout, weight_decay=0.0005)
         return net
 
     def prepare_label(self, input_batch, new_size):
@@ -62,7 +58,7 @@ class UnetModel(object):
         Returns:
           Argmax over the predictions of the network of the same shape as the input.
         """
-        raw_output = self._create_network(tf.cast(input_batch, tf.float32), dropout=False)
+        raw_output = self._create_network(tf.cast(input_batch, tf.float32), dropout=False, is_training = self.is_training)
         raw_output = tf.image.resize_bilinear(raw_output, tf.shape(input_batch)[1:3, ])
         raw_output = tf.argmax(raw_output, axis=3)
         raw_output = tf.expand_dims(raw_output, axis=3)  # Create 4D-tensor.
@@ -77,7 +73,7 @@ class UnetModel(object):
         Returns:
           Pixel-wise softmax loss.
         """
-        raw_output = self._create_network(tf.cast(img_batch, tf.float32), dropout=True)
+        raw_output = self._create_network(tf.cast(img_batch, tf.float32), dropout=True, is_training = self.is_training)
 
         # Get prediction output
         raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(img_batch)[1:3, ])
@@ -97,5 +93,11 @@ class UnetModel(object):
 
         # Calculate the masked loss 
         loss = tf.losses.sparse_softmax_cross_entropy(logits=prediction, labels=gt, weights=mask)
+        reduced_loss = tf.reduce_mean(loss)
 
-        return pred, loss
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        if update_ops:
+            updates = tf.group(*update_ops)
+            reduced_loss = control_flow_ops.with_dependencies([updates], reduced_loss)
+
+        return pred, reduced_loss
