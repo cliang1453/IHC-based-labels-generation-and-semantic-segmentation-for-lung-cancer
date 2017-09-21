@@ -77,22 +77,33 @@ import pdb
 import numpy as np
 import tensorflow as tf
 
-tf.app.flags.DEFINE_string('data_dir', '/media/chen/data/Lung_project/dataset',
+
+#################################HYPERPARAM#########################################
+LABEL_GEN = True
+LABELID_DIR = '/media/chen/data/Lung_project/dataset/test/pretrained_eval/full_unet_label_gen_1_9000/'
+LABELRGB_DIR = '/media/chen/data/Lung_project/dataset/test/pretrained_eval/full_unet_label_gen_1_9000_color/'
+TRAIN_LABEL_LIST = 'train_label_gen.txt'
+OUTPUT_DIR = '/media/chen/data/Lung_project/dataset/unet_full_tfexamples/'
+#################################HYPERPARAM#########################################
+
+tf.app.flags.DEFINE_string('data_dir', '/media/chen/data/Lung_project/dataset/',
+                           'Data directory of HE_IHC')
+tf.app.flags.DEFINE_string('labelID_dir', LABELID_DIR,
+                           'Data directory of HE_IHC')
+tf.app.flags.DEFINE_string('labelRGB_dir', LABELRGB_DIR,
                            'Data directory of HE_IHC')
 
 tf.app.flags.DEFINE_string('train_img_list', 'train_img.txt',
                            'Training data list of HE_IHC')
-
-tf.app.flags.DEFINE_string('train_label_list', 'train_label.txt',
+tf.app.flags.DEFINE_string('train_label_list', TRAIN_LABEL_LIST,
                            'Training data list of HE_IHC')
 
 tf.app.flags.DEFINE_string('validation_img_list', 'val_img.txt',
                            'Validation data list of HE_IHC')
-
 tf.app.flags.DEFINE_string('validation_label_list', 'val_label.txt',
                            'Validation data list of HE_IHC')
 
-tf.app.flags.DEFINE_string('output_directory', '/media/chen/data/Lung_project/dataset/tfexample/',
+tf.app.flags.DEFINE_string('output_directory', OUTPUT_DIR,
                            'Output data directory')
 
 tf.app.flags.DEFINE_integer('train_shards', 32,
@@ -447,7 +458,7 @@ def _process_image_files(name, image_files, stained_files, labelID_files, labelR
         (datetime.now(), len(image_files)))
   sys.stdout.flush()
 
-def _read_labels(files_img_list, files_label_list, data_dir):
+def _read_labels(files_img_list, files_label_list, data_dir, labelID_dir, labelRGB_dir):
 
   image_files, stained_files, labelID_files, labelRGB_files, labelMask_files = [], [], [], [], []
   
@@ -462,8 +473,8 @@ def _read_labels(files_img_list, files_label_list, data_dir):
     for line in f:
       stained, labelID, labelRGB, labelMask = line.strip("\n").split(' ')
       stained_files.append(data_dir + stained)
-      labelID_files.append(data_dir + labelID)
-      labelRGB_files.append(data_dir + labelRGB)
+      labelID_files.append(labelID_dir + labelID)
+      labelRGB_files.append(labelRGB_dir + labelRGB)
       labelMask_files.append(data_dir + labelMask)
 
 
@@ -483,7 +494,7 @@ def _read_labels(files_img_list, files_label_list, data_dir):
   return image_files, stained_files, labelID_files, labelRGB_files, labelMask_files
 
 
-def _process_dataset(name, files_img_list, files_label_list, num_shards, data_dir):
+def _process_dataset(name, files_img_list, files_label_list, num_shards, data_dir, labelID_dir, labelRGB_dir):
   """Process a complete data set and save it as a TFRecord.
 
   Args:
@@ -492,7 +503,7 @@ def _process_dataset(name, files_img_list, files_label_list, num_shards, data_di
     num_shards: integer number of shards for this data set.
     labels_file: string, path to the labels file.
   """
-  image_files, stained_files, labelID_files, labelRGB_files, labelMask_files = _read_labels(files_img_list, files_label_list, data_dir)
+  image_files, stained_files, labelID_files, labelRGB_files, labelMask_files = _read_labels(files_img_list, files_label_list, data_dir, labelID_dir, labelRGB_dir)
   _process_image_files(name, image_files, stained_files, labelID_files, labelRGB_files, labelMask_files, num_shards)
 
 
@@ -504,11 +515,17 @@ def main(unused_argv):
       'FLAGS.validation_shards')
   print('Saving results to %s' % FLAGS.output_directory)
 
-  # Run it!
+ # Run it!
   _process_dataset('validation_heihc', FLAGS.validation_img_list, FLAGS.validation_label_list,
-                   FLAGS.validation_shards, FLAGS.data_dir)
-  _process_dataset('train_heihc', FLAGS.train_img_list, FLAGS.train_label_list,
-                   FLAGS.train_shards, FLAGS.data_dir)
+                     FLAGS.validation_shards, data_dir = FLAGS.data_dir, labelID_dir = FLAGS.data_dir, labelRGB_dir = FLAGS.data_dir)
+
+  if LABEL_GEN == True:
+    _process_dataset('train_heihc', FLAGS.train_img_list, FLAGS.train_label_list,
+                      FLAGS.train_shards, data_dir = FLAGS.data_dir, labelID_dir = FLAGS.labelID_dir, labelRGB_dir = FLAGS.labelRGB_dir)
+  else:
+    _process_dataset('train_heihc', FLAGS.train_img_list, FLAGS.train_label_list,
+                      FLAGS.train_shards, data_dir = FLAGS.data_dir, labelID_dir = FLAGS.data_dir, labelRGB_dir = FLAGS.data_dir)
+
 
 if __name__ == '__main__':
   tf.device('/gpu:0')

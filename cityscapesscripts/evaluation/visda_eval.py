@@ -6,7 +6,9 @@ from os.path import join
 from scipy import misc
 
 DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/selected_labelID_3/'
-PRED_DIRECTORY = '/media/chen/data/Lung_project/deeplab_lfov_eval/snapshot_4_lrdecay_dropout_9000/'
+PRED_DIRECTORY = '/media/chen/data/Lung_project/dataset/test/pretrained_eval/full_unet_label_gen_1_9000/'
+IMAGE_PATH_LIST = 'image_labelgen.txt'
+LABEL_PATH_LIST = 'label_labelgen.txt'
 UNIFORM_SIZE = (500, 500)
 
 def fast_hist(a, b, n):
@@ -39,8 +41,8 @@ def compute_mIoU(gt_dir, pred_dir):
     name_classes = np.array(info['label'], dtype=np.str)
     palette = np.array(info['palette'], dtype=np.uint8)
     hist = np.zeros((num_classes, num_classes))
-    image_path_list = 'image.txt'
-    label_path_list = 'label.txt'
+    image_path_list = IMAGE_PATH_LIST
+    label_path_list = LABEL_PATH_LIST
 
     gt_imgs = open(label_path_list, 'rb').read().splitlines()
     pred_imgs = open(image_path_list, 'rb').read().splitlines()

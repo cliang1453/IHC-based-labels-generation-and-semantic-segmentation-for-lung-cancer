@@ -22,18 +22,19 @@ from models import UnetModel, ImageReader, decode_labels, decode_labels_with_mas
 
 BATCH_SIZE = 4
 IS_TRAINING = True
-DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/updated_tfexample_2/' #'/media/chen/data/Lung_project/dataset/updated_tfexample_2/'
+IS_SIMPLIFIED = True
+DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/test/pretrained_tfexamples/' #'/media/chen/data/Lung_project/dataset/updated_tfexample_2/'
 DATASET_NAME = 'heihc' #dataset name consists of all lower case letters
 INPUT_SIZE = '512,512'
 LEARNING_RATE = 1e-4
-NUM_STEPS = 10001
+NUM_STEPS = 40001
 RANDOM_SCALE = True
 RESTORE_FROM = None #'/media/chen/data/Lung_project/dataset/init/SEC_init.ckpt'
 FINETUNE_FROM = None
 SAVE_NUM_IMAGES = 4
 SAVE_PRED_EVERY = 20
 SAVE_MODEL_EVERY = 1000
-SNAPSHOT_DIR = '/media/chen/data/Lung_project/unet_test/snapshot_dropout_lrconstant_BN_4/'
+SNAPSHOT_DIR = '/media/chen/data/Lung_project/dataset/test/simp_unet_label_gen_1/'
 NUM_CLASS = 3
 IMG_MEAN = np.array((191.94056702, 147.93313599, 179.39755249), dtype=np.float32) # This is in R,G,B order
 
@@ -47,6 +48,8 @@ def get_arguments():
     parser.add_argument("--batch_size", type=int, default=BATCH_SIZE,
                         help="Number of images sent to the network in one step.")
     parser.add_argument("--is_training", type=str, default=IS_TRAINING,
+                        help="Path to the directory containing the PASCAL VOC dataset.")
+    parser.add_argument("--is_simplified", type=str, default=IS_SIMPLIFIED,
                         help="Path to the directory containing the PASCAL VOC dataset.")
     parser.add_argument("--data_dir", type=str, default=DATA_DIRECTORY,
                         help="Path to the directory containing the PASCAL VOC dataset.")
@@ -136,7 +139,7 @@ def main():
         image_batch, label_batch, mask_batch, stained_batch, labelRGB_batch = reader.dequeue(args.batch_size)
     
     # Create network.
-    net = UnetModel(args.number_class, args.is_training)
+    net = UnetModel(args.number_class, args.is_training, args.is_simplified)
     # starter_learning_rate = args.learning_rate
     # # learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
     # #                                            1000, 0.96, staircase=True)
@@ -168,10 +171,10 @@ def main():
     
     # learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
     #                                            1000, 0.96, staircase=True)
-    # learning_rate = tf.train.polynomial_decay(starter_learning_rate, global_step, args.num_steps,
-    #                                         end_learning_rate=0.00, power=0.9,
-    #                                         cycle=False, name=None)
-    learning_rate = starter_learning_rate
+    learning_rate = tf.train.polynomial_decay(starter_learning_rate, global_step, args.num_steps,
+                                            end_learning_rate=0.00, power=0.9,
+                                            cycle=False, name=None)
+    #learning_rate = starter_learning_rate
 
     optimiser = tf.train.AdamOptimizer(learning_rate=learning_rate)
     #optimiser = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9, use_locking=False, use_nesterov=False)

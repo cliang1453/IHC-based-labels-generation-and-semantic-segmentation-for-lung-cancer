@@ -2,6 +2,7 @@ import tensorflow as tf
 from tensorflow.python.ops import control_flow_ops
 from six.moves import cPickle
 import unet
+import simplified_unet
 
 arg_scope = tf.contrib.framework.arg_scope
 
@@ -14,11 +15,12 @@ class UnetModel(object):
     there for details.
     """
 
-    def __init__(self, number_class=3, is_training=True):
+    def __init__(self, number_class=3, is_training=True, is_simplified = False):
 
         """Create the model"""
         self.n_classes = number_class
         self.is_training = is_training
+        self.is_simplified = is_simplified
 
     def _create_network(self, input_batch, dropout = False, is_training = True):
         """Construct DeepLab-LargeFOV network.
@@ -30,7 +32,11 @@ class UnetModel(object):
         Returns:
           A downsampled segmentation mask.
         """
-        net, _ = unet.unet(input_batch, self.n_classes, is_training = is_training, dropout = dropout, weight_decay=0.0005)
+        if not self.is_simplified:
+            net, _ = unet.unet(input_batch, self.n_classes, is_training = is_training, dropout = dropout, weight_decay=0.0005)
+        else:
+            net, _ = simplified_unet.unet(input_batch, self.n_classes, is_training = is_training, dropout = dropout, weight_decay=0.0005)
+
         return net
 
     def prepare_label(self, input_batch, new_size):
