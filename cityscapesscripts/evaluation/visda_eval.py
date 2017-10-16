@@ -5,10 +5,10 @@ from PIL import Image
 from os.path import join
 from scipy import misc
 
-DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/selected_labelID_3/'
-PRED_DIRECTORY = '/media/chen/data/Lung_project/dataset/test/pretrained_eval/full_unet_label_gen_1_9000/'
-IMAGE_PATH_LIST = 'image_labelgen.txt'
-LABEL_PATH_LIST = 'label_labelgen.txt'
+DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/simptf_labelID/'#selected_labelID3 #'/media/chen/data/Lung_project/dataset/test/pretrained_eval/simp_unet_label_gen_1_9000/' #
+PRED_DIRECTORY = '/media/chen/data/Lung_project/simptf_unet_eval/snapshot_dropout_lrdecay_BN_2_9000/' #'/media/chen/data/Lung_project/simptf_unet_pretrained_eval/snapshot_dropout_lrdecay_BN_2_9000/'
+IMAGE_PATH_LIST = 'image.txt'
+LABEL_PATH_LIST = 'label.txt'
 UNIFORM_SIZE = (500, 500)
 
 def fast_hist(a, b, n):
@@ -17,6 +17,7 @@ def fast_hist(a, b, n):
         print(len(b))
         print("size not agree")
         return np.zeros((n, n), np.uint8)
+    
     k = (b >= 0) & (b < n)
     return np.bincount(n * a[k].astype(int) + b[k].astype(int), minlength=n ** 2).reshape(n, n)
 
@@ -50,6 +51,7 @@ def compute_mIoU(gt_dir, pred_dir):
     for ind in range(len(gt_imgs)):
         pred = np.array(Image.open(join(pred_dir, pred_imgs[ind].split('/')[-1])))
         label = np.array(Image.open(join(gt_dir, gt_imgs[ind])))
+        #pred = misc.imresize(pred, UNIFORM_SIZE, interp='bilinear', mode=None)
         label = misc.imresize(label, UNIFORM_SIZE, interp='bilinear', mode=None)
         hist += fast_hist(label.flatten(), pred.flatten(), num_classes)
         if ind > 0 and ind % 10 == 0:

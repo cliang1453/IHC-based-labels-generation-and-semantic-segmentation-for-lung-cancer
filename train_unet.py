@@ -16,25 +16,27 @@ import pprint
 
 import tensorflow as tf
 import numpy as np
+import cv2
+from os.path import join
 
 from models import UnetModel, ImageReader, decode_labels, decode_labels_with_mask, inv_preprocess, inv_preprocess_with_mask
 
 
 BATCH_SIZE = 4
 IS_TRAINING = True
-IS_SIMPLIFIED = True
-DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/test/pretrained_tfexamples/' #'/media/chen/data/Lung_project/dataset/updated_tfexample_2/'
+IS_SIMPLIFIED = False
+DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/simp_unet_tfexample/' ##'/media/chen/data/Lung_project/dataset/updated_tfexample_2/'#'
 DATASET_NAME = 'heihc' #dataset name consists of all lower case letters
 INPUT_SIZE = '512,512'
 LEARNING_RATE = 1e-4
 NUM_STEPS = 40001
 RANDOM_SCALE = True
 RESTORE_FROM = None #'/media/chen/data/Lung_project/dataset/init/SEC_init.ckpt'
-FINETUNE_FROM = None
+FINETUNE_FROM = None #'/media/chen/data/Lung_project/dataset/test/fullunet_label_gen_1/model.ckpt-9000'
 SAVE_NUM_IMAGES = 4
 SAVE_PRED_EVERY = 20
 SAVE_MODEL_EVERY = 1000
-SNAPSHOT_DIR = '/media/chen/data/Lung_project/dataset/test/simp_unet_label_gen_1/'
+SNAPSHOT_DIR = '/media/chen/data/Lung_project/dataset/unet_test_simptf/snapshot_dropout_lrdecay_BN_2/'
 NUM_CLASS = 3
 IMG_MEAN = np.array((191.94056702, 147.93313599, 179.39755249), dtype=np.float32) # This is in R,G,B order
 
@@ -235,12 +237,19 @@ def main():
             loss_value, summary, _ = sess.run([loss, final_summary, optim])
             summary_writer.add_summary(summary, step)
         else:
-            loss_value, _ = sess.run([loss, optim])
+            loss_value, _ , preds, mask_batchs, label_batchs, image_batchs = sess.run([loss, optim, pred, mask_batch, label_batch, image_batch])
+            image_batchs = inv_preprocess_with_mask(image_batchs, mask_batchs, 1, IMG_MEAN)
+            #print(label_batchs[0, :])
+            # print(label_batchs.shape)
+            # cv2.imwrite(join(args.snapshot_dir, str(step)+'.png'), preds[0,:])
+            # cv2.imwrite(join(args.snapshot_dir, 'label' +str(step)+'.png'), label_batchs[0,:])
+            # cv2.imwrite(join(args.snapshot_dir, 'image' +str(step)+'.png'), image_batchs[0,:])
 
         if step % args.save_model_every == 0:
             save(saver, sess, args.snapshot_dir, step)
 
         duration = time.time() - start_time
+        
         print('step {:d} \t loss = {:.3f}, ({:.3f} sec/step)'.format(step, loss_value, duration))
     coord.request_stop()
     coord.join(threads)

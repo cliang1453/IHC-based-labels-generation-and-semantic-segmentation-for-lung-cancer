@@ -80,13 +80,13 @@ import tensorflow as tf
 
 #################################HYPERPARAM#########################################
 LABEL_GEN = True
-LABELID_DIR = '/media/chen/data/Lung_project/dataset/test/pretrained_eval/full_unet_label_gen_1_9000/'
-LABELRGB_DIR = '/media/chen/data/Lung_project/dataset/test/pretrained_eval/full_unet_label_gen_1_9000_color/'
+LABELID_DIR = '/media/chen/data/Lung_project/dataset/test/pretrained_eval/simp_unet_label_gen_1_9000/'
+LABELRGB_DIR = '/media/chen/data/Lung_project/dataset/test/pretrained_eval/simp_unet_label_gen_1_9000_color/'
 TRAIN_LABEL_LIST = 'train_label_gen.txt'
-OUTPUT_DIR = '/media/chen/data/Lung_project/dataset/unet_full_tfexamples/'
+OUTPUT_DIR = '/media/chen/data/Lung_project/dataset/simp_unet_tfexample/'
 #################################HYPERPARAM#########################################
 
-tf.app.flags.DEFINE_string('data_dir', '/media/chen/data/Lung_project/dataset/',
+tf.app.flags.DEFINE_string('data_dir', '/media/chen/data/Lung_project/dataset',
                            'Data directory of HE_IHC')
 tf.app.flags.DEFINE_string('labelID_dir', LABELID_DIR,
                            'Data directory of HE_IHC')
@@ -381,6 +381,7 @@ def _process_image_files_batch(coder, thread_index, ranges, name, image_files, s
       labelRGB_file = labelRGB_files[i]
       labelMask_file = labelMask_files[i]
 
+
       image_buffer, height, width = _process_image(image_file, coder)
       stained_buffer, stained_height, stained_width = _process_image(stained_file, coder)
       labelID_buffer, labelID_height, labelID_width = _process_segmask(labelID_file, coder)
@@ -472,6 +473,7 @@ def _read_labels(files_img_list, files_label_list, data_dir, labelID_dir, labelR
   with open(files_label_list, 'r') as f:
     for line in f:
       stained, labelID, labelRGB, labelMask = line.strip("\n").split(' ')
+      labelMask = labelMask.strip("\r")
       stained_files.append(data_dir + stained)
       labelID_files.append(labelID_dir + labelID)
       labelRGB_files.append(labelRGB_dir + labelRGB)

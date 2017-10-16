@@ -20,11 +20,11 @@ import numpy as np
 from models import DeepLabLFOVModel, ImageReader, decode_labels, decode_labels_with_mask, inv_preprocess, inv_preprocess_with_mask
 
 
-BATCH_SIZE = 8
-DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/updated_tfexample_2/'
+BATCH_SIZE = 4
+DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/simp_unet_tfexample/'#'/media/chen/data/Lung_project/dataset/updated_tfexample_2/'
 DATASET_NAME = 'heihc' #dataset name consists of all lower case letters
 INPUT_SIZE = '500,500'
-LEARNING_RATE = 1e-3
+LEARNING_RATE = 1e-4
 NUM_STEPS = 40001
 RANDOM_SCALE = True
 RESTORE_FROM = '/media/chen/data/Lung_project/dataset/init/SEC_init.ckpt' #None #
@@ -32,7 +32,7 @@ FINETUNE_FROM = None#'/media/chen/data/Lung_project/deeplab_lfov_test/snapshot_2
 SAVE_NUM_IMAGES = 4
 SAVE_PRED_EVERY = 20
 SAVE_MODEL_EVERY = 1000
-SNAPSHOT_DIR = '/media/chen/data/Lung_project/deeplab_lfov_test/snapshot_5_lrdecay_dropout/'
+SNAPSHOT_DIR = '/media/chen/data/Lung_project/dataset/deeplab_test_simptf/snapshot_dropout_lrdecay_1/'
 NUM_CLASS = 3
 IMG_MEAN = np.array((191.94056702, 147.93313599, 179.39755249), dtype=np.float32) # This is in R,G,B order
 

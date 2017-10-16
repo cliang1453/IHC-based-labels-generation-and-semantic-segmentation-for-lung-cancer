@@ -3,6 +3,7 @@ import os
 import numpy as np
 import tensorflow as tf
 from dataset import dataset_factory
+import math
 
 slim = tf.contrib.slim
 
@@ -144,6 +145,7 @@ class ImageReader(object):
 
         self.stained = stained
         self.labelRGB = labelRGB
+
 
 
 

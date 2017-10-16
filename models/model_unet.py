@@ -98,8 +98,10 @@ class UnetModel(object):
         mask = tf.reshape(resized_mask_batch, gt.get_shape())
 
         # Calculate the masked loss 
-        loss = tf.losses.sparse_softmax_cross_entropy(logits=prediction, labels=gt, weights=mask)
+        epsilon = 0.00001 * tf.ones(prediction.get_shape(), tf.float32)
+        loss = tf.losses.sparse_softmax_cross_entropy(logits=prediction+epsilon, labels=gt, weights=mask)
         reduced_loss = tf.reduce_mean(loss)
+        print(loss)
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         if update_ops:

@@ -27,16 +27,18 @@ from models import *
 import pprint
 
 #If evaluate GTA model on cityscapes dataset
-DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/updated_tfexample_2/'
+DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/simp_unet_tfexample/'
 IS_TRAINING = True
+IS_SIMPLIFIED = False
+IS_GENERATING_NEW_LABELS = False
 DATASET_NAME = 'heihc'
 EVAL_UNET = True
-NUM_STEPS = 869#2803
+NUM_STEPS = 869 #2803 #
 INPUT_SIZE = '512,512'
 ORIGINAL_UNIFORM_SIZE = (500, 500)
-RESTORE_FROM = '/media/chen/data/Lung_project/unet_test/snapshot_dropout_lrdecay_BN_4/model.ckpt-9000'
-SAVE_DIR_GRAY = '/media/chen/data/Lung_project/unet_eval/snapshot_dropout_lrdecay_BN_4_9000/'
-SAVE_DIR_COLOR = None #'/media/chen/data/Lung_project/unet_eval/snapshot_dropout_lrdecay_noBN_1_7000_color/'
+RESTORE_FROM = '/media/chen/data/Lung_project/simptf_unet_test/snapshot_dropout_lrdecay_BN_2/model.ckpt-7000'
+SAVE_DIR_GRAY = '/media/chen/data/Lung_project/simptf_unet_eval/snapshot_dropout_lrdecay_BN_2_7000/'
+SAVE_DIR_COLOR = None#'/media/chen/data/Lung_project/simptf_unet_eval/snapshot_dropout_lrdecay_BN_2_8000_color/'
 SAVE_IOU_EVERY = 50
 WEIGHTS_PATH   = None
 NUM_CLASS = 3
@@ -59,7 +61,8 @@ def get_arguments():
                         help="Path to the directory containing the PASCAL VOC dataset.")
     parser.add_argument("--eval_unet", type=str, default=EVAL_UNET,
                         help="Path to the directory containing the PASCAL VOC dataset.")
-
+    parser.add_argument("--is_simplified", type=str, default=IS_SIMPLIFIED,
+                        help="Path to the directory containing the PASCAL VOC dataset.")
     # parser.add_argument("--data_list", type=str, default=DATA_LIST_PATH,
     #                     help="Path to the file listing the images in the dataset.")
     parser.add_argument("--dataset_name", type=str, default=DATASET_NAME,
@@ -83,6 +86,9 @@ def get_arguments():
                         help="need further accuracy evaluation."
                              "If not set, default to be True.")
     parser.add_argument("--mask_class_index", type=int, default=MASK_CLASS_INDEX,
+                        help="need further accuracy evaluation."
+                             "If not set, default to be True.")
+    parser.add_argument("--is_generating_new_labels", type=int, default=IS_GENERATING_NEW_LABELS,
                         help="need further accuracy evaluation."
                              "If not set, default to be True.")
     return parser.parse_args()
@@ -170,7 +176,7 @@ def main():
     # Create network.
     #net = DeepLabV2Model(args.number_class)
     if args.eval_unet:
-        net = UnetModel(args.number_class, args.is_training)
+        net = UnetModel(args.number_class, args.is_training, args.is_simplified)
     else:
         net = DeepLabLFOVModel(args.number_class)
     
@@ -242,10 +248,15 @@ def main():
 
         if args.need_further_eval:
             if args.save_dir_gray is not None:
-                img = add_pred_mask(preds[0, :, :, 0], masks[:, :, 0], args.mask_class_index)
-                im = Image.fromarray(img)
-                im_name = os.path.basename(filenames)
-                im.save(args.save_dir_gray + im_name)
+                if args.is_generating_new_labels is False:
+                    img = add_pred_mask(preds[0, :, :, 0], masks[:, :, 0], args.mask_class_index)
+                    im = Image.fromarray(img)
+                    im_name = os.path.basename(filenames)
+                    im.save(args.save_dir_gray + im_name)
+                else:
+                    im = Image.fromarray(preds[0, :, :, 0])
+                    im_name = os.path.basename(filenames)
+                    im.save(args.save_dir_gray + im_name)
 
         if args.save_dir_color is not None:
             img = decode_labels_2_with_mask(preds[0, :, :, 0], masks[:, :, 0])
