@@ -27,25 +27,25 @@ from models import *
 import pprint
 
 #If evaluate GTA model on cityscapes dataset
-DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/simp_unet_tfexample/'
+DATA_DIRECTORY = '/media/chen/data2/Lung_project/new_dataset/tfexample/'
 IS_TRAINING = True
 IS_SIMPLIFIED = False
 IS_GENERATING_NEW_LABELS = False
 DATASET_NAME = 'heihc'
 EVAL_UNET = True
-NUM_STEPS = 869 #2803 #
+NUM_STEPS = 7572#1517#4769#869 #2803 #
 INPUT_SIZE = '512,512'
 ORIGINAL_UNIFORM_SIZE = (500, 500)
-RESTORE_FROM = '/media/chen/data/Lung_project/simptf_unet_test/snapshot_dropout_lrdecay_BN_2/model.ckpt-7000'
-SAVE_DIR_GRAY = '/media/chen/data/Lung_project/simptf_unet_eval/snapshot_dropout_lrdecay_BN_2_7000/'
-SAVE_DIR_COLOR = None#'/media/chen/data/Lung_project/simptf_unet_eval/snapshot_dropout_lrdecay_BN_2_8000_color/'
+RESTORE_FROM = '/media/chen/data2/Lung_project/new_dataset/new_test/model.ckpt-9000'
+SAVE_DIR_GRAY = '/media/chen/data2/Lung_project/new_dataset/validation/train_val/new_test/'
+SAVE_DIR_COLOR = '/media/chen/data2/Lung_project/new_dataset/validation/train_val/new_test_rgb/'
 SAVE_IOU_EVERY = 50
 WEIGHTS_PATH   = None
 NUM_CLASS = 3
 NEED_FURTHER_EVAL = True
 IMG_MEAN = np.array((191.94056702, 147.93313599, 179.39755249), dtype=np.float32) # This is in R,G,B order
 MASK_CLASS_INDEX = 4
-EVA_TRAINSET = False
+EVA_TRAINSET = True
 
 
 def get_arguments():
@@ -163,7 +163,7 @@ def main():
     # Load reader.
     with tf.name_scope("create_inputs"):
         reader = ImageReader(dataset_name=args.dataset_name,
-                             dataset_split_name='validation',
+                             dataset_split_name='train',
                              dataset_dir=args.data_dir,
                              input_size=input_size,
                              coord=coord,

@@ -23,12 +23,19 @@ from skimage.color import rgb2gray
 from skimage.morphology import closing, binary_closing, disk, remove_small_holes, dilation, remove_small_objects  
 from skimage import color, morphology, filters, exposure, feature
 
-IM_DIR = '/media/chen/data/Lung_project/new_dataset/IHC-HE_2/HE/'
-STAINED_DIR = '/media/chen/data/Lung_project/new_dataset/IHC-HE_2/IHC/'
-IM_SAVE_DIR = '/media/chen/data/Lung_project/new_dataset/IHC-HE_2/images/'
-STAINED_SAVE_DIR = '/media/chen/data/Lung_project/new_dataset/IHC-HE_2/stained/'
-BLEND_SAVE_DIR = '/media/chen/data/Lung_project/new_dataset/IHC-HE_2/blend/'
-NO_TRANS_SAVE_DIR = '/media/chen/data/Lung_project/new_dataset/IHC-HE_2/no_trans_blend/'
+# IM_DIR = '/media/chen/data/Lung_project/new_dataset/IHC-HE_2/HE/'
+# STAINED_DIR = '/media/chen/data/Lung_project/new_dataset/IHC-HE_2/IHC/'
+# IM_SAVE_DIR = '/media/chen/data/Lung_project/new_dataset/IHC-HE_2/images_rgb/'
+# STAINED_SAVE_DIR = '/media/chen/data/Lung_project/new_dataset/IHC-HE_2/stained_rgb/'
+# BLEND_SAVE_DIR = '/media/chen/data/Lung_project/new_dataset/IHC-HE_2/blend_rgb/'
+# NO_TRANS_SAVE_DIR = '/media/chen/data/Lung_project/new_dataset/IHC-HE_2/no_trans_blend_rgb/'
+IM_DIR = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3/HE/'
+STAINED_DIR = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3/IHC/'
+IM_SAVE_DIR = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3/images_rgb/'
+STAINED_SAVE_DIR = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3/stained_rgb/'
+BLEND_SAVE_DIR = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3/blend_rgb/'
+NO_TRANS_SAVE_DIR = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3/no_trans_blend_rgb/'
+
 
 LEVEL_1_CROP = 3000
 CROP_H_RATIO = 1
@@ -58,9 +65,16 @@ def _get_homography(src = None, dest = None, flann_ratio = 0.40):
 		print('Not enough descriptors found')
 		return None
 
+	#if len(des1)<1 or des2 is None
+
 	index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
 	search_params = dict(checks = 50)
 	flann = cv2.FlannBasedMatcher(index_params, search_params)
+	
+	if len(kp1)<2 or len(kp2)<2:
+		print "Not enough key points found"
+		return None
+
 	matches = flann.knnMatch(des1,des2,k=2)
 
 	# store all the good matches as per Lowe's ratio test.
@@ -115,14 +129,27 @@ def _third_level_manipulation(im_full_size = None, stained_full_size = None, no_
 			blend = cv2.addWeighted(im,0.5,stained,0.5,0)
 
 			count[2] = count[2] + 1
-			cv2.imwrite(os.path.join(IM_SAVE_DIR, name.strip('.svs') + str(count[0]) + '_' + str(count[1]) + '_' + str(count[2]) + '.png'),im)
-			cv2.imwrite(os.path.join(STAINED_SAVE_DIR, name.strip('.svs') + str(count[0]) + '_' + str(count[1]) + '_' + str(count[2]) + '.png'),stained)
-			cv2.imwrite(os.path.join(BLEND_SAVE_DIR, name.strip('.svs') + str(count[0]) + '_' + str(count[1]) + '_' + str(count[2]) + '.png'),blend)
 
+			im_result = Image.fromarray(im.astype(np.uint8))
+			stained_result = Image.fromarray(stained.astype(np.uint8))
+			blend_result = Image.fromarray(blend.astype(np.uint8))
+
+			im_result.save(os.path.join(IM_SAVE_DIR, name.strip('.svs') + str(count[0]) + '_' + str(count[1]) + '_' + str(count[2]) + '.png'))
+			stained_result.save(os.path.join(STAINED_SAVE_DIR, name.strip('.svs') + str(count[0]) + '_' + str(count[1]) + '_' + str(count[2]) + '.png'))
+			blend_result.save(os.path.join(BLEND_SAVE_DIR, name.strip('.svs') + str(count[0]) + '_' + str(count[1]) + '_' + str(count[2]) + '.png'))
+			
 			if w==0 and h==0:
 				blend_no_trans = cv2.addWeighted(im,0.5,no_trans,0.5,0)
-				cv2.imwrite(os.path.join(NO_TRANS_SAVE_DIR, name.strip('.svs') + str(count[0]) + '_' + str(count[1]) + '_' + str(count[2]) + '.png'), blend_no_trans)
+				blend_no_trans_result = Image.fromarray(blend_no_trans.astype(np.uint8))
+				blend_no_trans_result.save(os.path.join(NO_TRANS_SAVE_DIR, name.strip('.svs') + str(count[0]) + '_' + str(count[1]) + '_' + str(count[2]) + '.png'))
+				
 
+            # cv2.imwrite(os.path.join(IM_SAVE_DIR, name.strip('.svs') + str(count[0]) + '_' + str(count[1]) + '_' + str(count[2]) + '.png'),im)vvv
+			# cv2.imwrite(os.path.join(STAINED_SAVE_DIR, name.strip('.svs') + str(count[0]) + '_' + str(count[1]) + '_' + str(count[2]) + '.png'),stained)
+			# cv2.imwrite(os.path.join(BLEND_SAVE_DIR, name.strip('.svs') + str(count[0]) + '_' + str(count[1]) + '_' + str(count[2]) + '.png'),blend)
+			# cv2.imwrite(os.path.join(NO_TRANS_SAVE_DIR, name.strip('.svs') + str(count[0]) + '_' + str(count[1]) + '_' + str(count[2]) + '.png'), blend_no_trans)
+
+			
 			# cv2.startWindowThread()
 			# cv2.imshow('im', im)
 			# cv2.imshow('stained_transformed', stained)
@@ -144,14 +171,14 @@ def _second_level_manipulation(im_full_size = None, stained_full_size = None, or
 			im = im_full_size[h * LEVEL_2_CROP : (h+1) * LEVEL_2_CROP,  w * LEVEL_2_CROP: (w+1) * LEVEL_2_CROP].copy()  
 			stained = stained_full_size[h * LEVEL_2_CROP : (h+1) * LEVEL_2_CROP,  w * LEVEL_2_CROP: (w+1) * LEVEL_2_CROP].copy()  
 
-			im_gray = cv2.cvtColor(im, cv2.COLOR_RGB2GRAY)
-			stained_gray = cv2.cvtColor(stained, cv2.COLOR_RGB2GRAY)
+			im_gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+			stained_gray = cv2.cvtColor(stained, cv2.COLOR_BGR2GRAY)
 
 			im_ds = cv2.resize(im_gray, None, fx=1.0/LEVEL_2_DOWNSAMPLE, fy=1.0/LEVEL_2_DOWNSAMPLE, interpolation = cv2.INTER_LINEAR)
 			stained_ds = cv2.resize(stained_gray, None, fx=1.0/LEVEL_2_DOWNSAMPLE, fy=1.0/LEVEL_2_DOWNSAMPLE, interpolation = cv2.INTER_LINEAR)
 
 			# Get Transformation matrix from stained_ds to im_ds
-			M = _get_homography(stained_ds, im_ds, flann_ratio = 0.45)
+			M = _get_homography(stained_ds, im_ds, flann_ratio = 0.6)
 			if M is None:
 				print('1000 * 1000 crop at position' + str(h) + ',' + str(w) + 'encounters problem in level II, discarded')
 				continue
@@ -185,6 +212,7 @@ def _first_level_manipulation(im_full_size = None, stained_full_size = None, ori
 			stained = np.array(stained_full_size.read_region((LEVEL_1_CROP * CROP_W_RATIO * w, LEVEL_1_CROP * CROP_H_RATIO * h),
 				                          0, (LEVEL_1_CROP * CROP_W_RATIO, LEVEL_1_CROP * CROP_H_RATIO)).convert('RGB'))
 
+
 			if CROP_W_RATIO is not 1 or CROP_H_RATIO is not 1:
 				stained = cv2.resize(stained, im.shape, 0, 0, interpolation = cv2.INTER_LINEAR)
 
@@ -195,10 +223,11 @@ def _first_level_manipulation(im_full_size = None, stained_full_size = None, ori
 			stained_ds = cv2.resize(stained_gray, None, fx=1.0/LEVEL_1_DOWNSAMPLE, fy=1.0/LEVEL_1_DOWNSAMPLE, interpolation = cv2.INTER_LINEAR)
 
 			# Get Transformation matrix from stained_ds to im_ds
-			M = _get_homography(stained_ds, im_ds, flann_ratio = 0.40)
+			M = _get_homography(stained_ds, im_ds, flann_ratio = 0.60)
 			if M is None:
 				print('3000 * 3000 crop at position' + str(h) + ',' + str(w) + 'encounters problem in level I, discarded')
 				continue
+			
 
 			M[0][2] = M[0][2] *LEVEL_1_DOWNSAMPLE
 			M[1][2] = M[1][2] *LEVEL_1_DOWNSAMPLE
@@ -224,38 +253,48 @@ def main():
 		print('begin processing ' + os.path.basename(name))
 
 		# CASE I: Dealing with marked up region
-		if(os.path.isfile(name.strip('.svs')+ '.xml')):
-			continue
+		# if(os.path.isfile(name.strip('.svs')+ '.xml')):
+		# 	continue
 		# Case II: Dealing with WSI
-		else:
-			# Read images
-			im = open_slide(IM_DIR + os.path.basename(name).strip('CK.svs') + 'HE.svs')
-			stained = open_slide(name)
+		# else:
+		# Read images
+		im = open_slide(IM_DIR + os.path.basename(name).strip('CK.svs') + 'HE.svs')
+		stained = open_slide(name)
 
-			# Error checking
-			if(im is None or stained is None):
-				print('No image readed')
-				continue
+		# Error checking
+		if(im is None or stained is None):
+			print('No image readed')
+			continue
 
-			# Error checking 
-			if im.level_count <= 0 or stained.level_count <= 0:
-				print('Error image level')
-				continue
+		# Error checking 
+		if im.level_count <= 0 or stained.level_count <= 0:
+			print('Error image level')
+			continue
 
-			# Read 0 level images
-			im_size = im.level_dimensions[0]
-			stained_size = stained.level_dimensions[0]
+		# Read 0 level images
+		im_size = im.level_dimensions[0]
+		stained_size = stained.level_dimensions[0]
 
-			if im_size != stained_size:
-				CROP_W_RATIO = np.float32(stained_size[0])/np.float32(im_size[0])
-				CROP_H_RATIO = np.float32(stained_size[1])/np.float32(im_size[1])
+		if im_size != stained_size:
+			CROP_W_RATIO = np.float32(stained_size[0])/np.float32(im_size[0])
+			CROP_H_RATIO = np.float32(stained_size[1])/np.float32(im_size[1])
 
-			count = np.array([0,0,0], np.uint8)
-			_first_level_manipulation(im_full_size = im, stained_full_size = stained, original_size = im_size, name = os.path.basename(name), count = count)
+		count = np.array([0,0,0], np.uint8)
+		_first_level_manipulation(im_full_size = im, stained_full_size = stained, original_size = im_size, name = os.path.basename(name), count = count)
 
-			print(os.path.basename(name) + ' complished')
+		print(os.path.basename(name) + ' complished')
 
 if __name__ == '__main__':
+	
+	if not os.path.exists(IM_SAVE_DIR):
+		os.makedirs(IM_SAVE_DIR)
+	if not os.path.exists(STAINED_SAVE_DIR):
+		os.makedirs(STAINED_SAVE_DIR)
+	if not os.path.exists(BLEND_SAVE_DIR):
+		os.makedirs(BLEND_SAVE_DIR)
+	if not os.path.exists(NO_TRANS_SAVE_DIR):
+		os.makedirs(NO_TRANS_SAVE_DIR)
+	
 	main()
 
 

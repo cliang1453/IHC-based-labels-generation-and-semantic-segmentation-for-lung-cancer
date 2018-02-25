@@ -19,7 +19,7 @@ import numpy as np
 import cv2
 from os.path import join
 
-from models import UnetModel, ImageReader, decode_labels, decode_labels_with_mask, inv_preprocess, inv_preprocess_with_mask
+from models import UnetModel, ImageReaderEric, decode_labels, inv_preprocess
 
 
 BATCH_SIZE = 4
@@ -29,7 +29,7 @@ DATA_DIRECTORY = '/media/chen/data2/Lung_project/new_dataset/tfexample/'#'/media
 DATASET_NAME = 'heihc' #dataset name consists of all lower case letters
 INPUT_SIZE = '512,512'
 LEARNING_RATE = 1e-4
-NUM_STEPS = 20001
+NUM_STEPS = 30001
 RANDOM_SCALE = True
 RESTORE_FROM = None#'/media/chen/data2/Lung_project/dataset/init/SEC_init.ckpt'
 FINETUNE_FROM = None #'/media/chen/data/Lung_project/dataset/test/fullunet_label_gen_1/model.ckpt-9000'
@@ -37,7 +37,7 @@ SAVE_NUM_IMAGES = 4
 SAVE_PRED_EVERY = 20
 SAVE_MODEL_EVERY = 1000
 SNAPSHOT_DIR = '/media/chen/data2/Lung_project/new_dataset/new_test/'
-NUM_CLASS = 3
+NUM_CLASS = 2
 IMG_MEAN = np.array((191.94056702, 147.93313599, 179.39755249), dtype=np.float32) # This is in R,G,B order
 
 def get_arguments():
@@ -131,14 +131,14 @@ def main():
         #     random_scale=False,
         #     coord=coord,
         #     image_mean=IMG_MEAN)
-        reader = ImageReader(dataset_name=args.dataset_name,
+        reader = ImageReaderEric(dataset_name=args.dataset_name,
                              dataset_split_name='train',
                              dataset_dir=args.data_dir,
                              input_size=input_size,
                              coord=coord,
                              image_mean=IMG_MEAN,
                              eva_trainset=False)
-        image_batch, label_batch, mask_batch, stained_batch, labelRGB_batch = reader.dequeue(args.batch_size)
+        image_batch, label_batch, labelRGB_batch = reader.dequeue(args.batch_size)
     
     # Create network.
     net = UnetModel(args.number_class, args.is_training, args.is_simplified)
@@ -166,7 +166,7 @@ def main():
     #     # pred = net.preds(image_batch)
 
      # Define the loss and optimisation parameters.
-    pred, loss = net.loss(image_batch, label_batch, mask_batch)
+    pred, loss = net.loss(image_batch, label_batch, None)
 
     global_step = tf.Variable(0, trainable=False)
     starter_learning_rate = args.learning_rate
@@ -191,14 +191,13 @@ def main():
     tf.summary.scalar('learning_rate', learning_rate)
 
     # Image summary.
-    images_summary = tf.py_func(inv_preprocess_with_mask, [image_batch, mask_batch, args.save_num_images, IMG_MEAN], tf.uint8)
-    stained_summary = tf.py_func(inv_preprocess, [stained_batch, args.save_num_images, IMG_MEAN], tf.uint8)
+    images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
     labels_summary = tf.py_func(inv_preprocess, [labelRGB_batch, args.save_num_images, IMG_MEAN], tf.uint8)
     #labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.number_class], tf.uint8)
-    preds_summary = tf.py_func(decode_labels_with_mask, [pred, mask_batch, args.save_num_images, args.number_class], tf.uint8)
+    preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.number_class], tf.uint8)
     
     total_summary = tf.summary.image('images', 
-                                     tf.concat(axis=2, values=[images_summary, stained_summary, labels_summary, preds_summary]), 
+                                     tf.concat(axis=2, values=[images_summary, labels_summary, preds_summary]), 
                                      max_outputs=args.save_num_images) # Concatenate row-wise.
     final_summary = tf.summary.merge_all()
     summary_writer = tf.summary.FileWriter(args.snapshot_dir,
@@ -237,8 +236,8 @@ def main():
             loss_value, summary, _ = sess.run([loss, final_summary, optim])
             summary_writer.add_summary(summary, step)
         else:
-            loss_value, _ , preds, mask_batchs, label_batchs, image_batchs = sess.run([loss, optim, pred, mask_batch, label_batch, image_batch])
-            image_batchs = inv_preprocess_with_mask(image_batchs, mask_batchs, 1, IMG_MEAN)
+            loss_value, _ , preds, label_batchs, image_batchs = sess.run([loss, optim, pred, label_batch, image_batch])
+            #image_batchs = inv_preprocess_with_mask(image_batchs, mask_batchs, 1, IMG_MEAN)
             #print(label_batchs[0, :])
             # print(label_batchs.shape)
             # cv2.imwrite(join(args.snapshot_dir, str(step)+'.png'), preds[0,:])

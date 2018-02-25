@@ -15,17 +15,15 @@
 """Provides data for the Pascal VOC Dataset (images + annotations).
 """
 import tensorflow as tf
-from dataset import dataset_common
+from dataset import dataset_common_eric
 
 slim = tf.contrib.slim
 
-FILE_PATTERN = '%s_heihc-*'
+FILE_PATTERN = '%s_eric-*'
 ITEMS_TO_DESCRIPTIONS = {
     'image': 'A color image of varying height and width.',
-    'stained' : 'A stained image which is the indication of GT',
     'labelID' : 'Segmentation mask GT',
     'labelRGB' :'Colored segmentation mask GT',
-    'labelMask' : 'Mask that exclude the out of interest region',
 
     'width': 'image width',
     'height': 'image height',
@@ -38,11 +36,11 @@ SPLITS_TO_SIZES = {
     # 'validation': 869,
     # 'train': 480,
     # 'validation': 4769,
-    'train': 7572,
-    'validation': 1517,
+    'train': 6770,
+    'validation': 2671,
 }
 
-NUM_CLASSES = 3
+NUM_CLASSES = 2
 
 
 def get_split(split_name, dataset_dir, file_pattern=None, reader=None):

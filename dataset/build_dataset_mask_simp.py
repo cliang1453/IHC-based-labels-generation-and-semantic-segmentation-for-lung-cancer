@@ -79,28 +79,32 @@ import tensorflow as tf
 
 
 #################################HYPERPARAM#########################################
-LABEL_GEN = False
-LABELID_DIR ='/media/chen/data2/Lung_project/'
+LABEL_GEN = True
+DATA_DIR = '/media/chen/data2/Lung_project/'
+LABELID_DIR = '/media/chen/data2/Lung_project/'
 LABELRGB_DIR = '/media/chen/data2/Lung_project/'
-TRAIN_LABEL_LIST = 'train_label_combined_noaug.txt'
-OUTPUT_DIR = '/media/chen/data2/Lung_project/new_dataset/tfexample/'
+TRAIN_IMG_LIST = '/home/chen/CS_seg/generate_labels/train_img_new.txt'
+TRAIN_LABEL_LIST = '/home/chen/CS_seg/generate_labels/train_label_new.txt'
+VAL_IMG_LIST = '/home/chen/CS_seg/generate_labels/val_img_new.txt'
+VAL_LABEL_LIST = '/home/chen/CS_seg/generate_labels/val_label_new.txt'
+OUTPUT_DIR = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3/label_generator/simp_unet_tfexample/'
 #################################HYPERPARAM#########################################
 
-tf.app.flags.DEFINE_string('data_dir', '/media/chen/data2/Lung_project',
+tf.app.flags.DEFINE_string('data_dir', DATA_DIR,
                            'Data directory of HE_IHC')
 tf.app.flags.DEFINE_string('labelID_dir', LABELID_DIR,
                            'Data directory of HE_IHC')
 tf.app.flags.DEFINE_string('labelRGB_dir', LABELRGB_DIR,
                            'Data directory of HE_IHC')
 
-tf.app.flags.DEFINE_string('train_img_list', 'train_img_combined_noaug.txt',
+tf.app.flags.DEFINE_string('train_img_list', TRAIN_IMG_LIST,
                            'Training data list of HE_IHC')
 tf.app.flags.DEFINE_string('train_label_list', TRAIN_LABEL_LIST,
                            'Training data list of HE_IHC')
 
-tf.app.flags.DEFINE_string('validation_img_list', 'val_img_combined_noaug.txt',
+tf.app.flags.DEFINE_string('validation_img_list', VAL_IMG_LIST,
                            'Validation data list of HE_IHC')
-tf.app.flags.DEFINE_string('validation_label_list', 'val_label_combined_noaug.txt',
+tf.app.flags.DEFINE_string('validation_label_list', VAL_LABEL_LIST,
                            'Validation data list of HE_IHC')
 
 tf.app.flags.DEFINE_string('output_directory', OUTPUT_DIR,

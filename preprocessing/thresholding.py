@@ -13,9 +13,9 @@ from skimage.morphology import watershed
 
 
 
-DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/selected_stained/'
-SAVE_DIRECTORY = '/media/chen/data/Lung_project/dataset/test/'
-SAVE_RGB_DIRECTORY = '/media/chen/data/Lung_project/dataset/test_rgb/'
+DATA_DIRECTORY = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3/stained_select'
+SAVE_DIRECTORY = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3/label_select_for_all_thres'
+SAVE_RGB_DIRECTORY = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3/label_select_for_all_thres_rgb'
 
 # build Lookup table
 num_class = 3
@@ -54,8 +54,9 @@ def generate_tumor(hsv):
     lower_red = np.array([20,90,30])
     upper_red = np.array([255,255,240])
     mask = cv2.inRange(hsv, lower_red, upper_red)
-    contours,hier = cv2.findContours(mask,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)
-    
+    #print(mask)
+    im2, contours, hierarchy = cv2.findContours(mask,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)
+    #print(contours)
     for cnt in contours:
         cv2.drawContours(mask,[cnt],0,255,-1)
 
@@ -77,7 +78,7 @@ def generate_background(hsv):
 
     mask = cv2.bitwise_not(mask)
 
-    contours,hier = cv2.findContours(mask,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)
+    im2, contours, hierarchy  = cv2.findContours(mask,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)
     
     for cnt in contours:
         cv2.drawContours(mask,[cnt],0,255,-1)
@@ -94,11 +95,12 @@ def select(data_dir, save_dir, save_rgb_dir):
     """
     Compute IoU given the predicted colorized images and 
     """
-    image_path_list = 'label_to_select.txt'
-    imgs = open(image_path_list, 'rb').read().splitlines()
-
-    for ind in range(len(imgs)):
-          img = cv2.imread(join(data_dir, imgs[ind].split('/')[-1]))
+    # image_path_list = 'label_to_select.txt'
+    # imgs = open(image_path_list, 'rb').read().splitlines()
+    for root, directories, files in os.walk(data_dir):
+      for imgs in files:
+          print(os.path.realpath(join(root + '/' + imgs)))
+          img = cv2.imread(os.path.realpath(join(root + '/' + imgs)))
           hsv = cv2.cvtColor(img, cv2.COLOR_RGB2HSV)
 
           tumor_labelID = generate_tumor(hsv)
@@ -126,10 +128,10 @@ def select(data_dir, save_dir, save_rgb_dir):
 
           
           final_mask_RGB = decode_labels(final_mask)
-          cv2.imwrite(join(save_dir, imgs[ind].split('/')[-1]),final_mask)
-          cv2.imwrite(join(save_rgb_dir, imgs[ind].split('/')[-1]),final_mask_RGB)
+          cv2.imwrite(join(save_dir, imgs),final_mask)
+          cv2.imwrite(join(save_rgb_dir, imgs),final_mask_RGB)
 
-          print(join(save_dir, imgs[ind].split('/')[-1]))
+          print(join(save_dir, imgs))
 
 
 

@@ -33,6 +33,7 @@ class UnetModel(object):
           A downsampled segmentation mask.
         """
         if not self.is_simplified:
+            print('not simplified')
             net, _ = unet.unet(input_batch, self.n_classes, is_training = is_training, dropout = dropout, weight_decay=0.0005)
         else:
             net, _ = simplified_unet.unet(input_batch, self.n_classes, is_training = is_training, dropout = dropout, weight_decay=0.0005)
@@ -93,15 +94,22 @@ class UnetModel(object):
         gt = tf.expand_dims(tf.cast(tf.reshape(label_batch, [-1]), tf.int32), axis=1)
 
         # Prepare mask
-        resized_mask_batch = tf.image.resize_nearest_neighbor(mask_batch, tf.stack(raw_output.get_shape()[1:3]))
-        resized_mask_batch = tf.cast(tf.reshape(resized_mask_batch, [-1]), tf.float32)
-        mask = tf.reshape(resized_mask_batch, gt.get_shape())
+
+        if resized_mask_batch != None:
+            resized_mask_batch = tf.image.resize_nearest_neighbor(mask_batch, tf.stack(raw_output.get_shape()[1:3]))
+            resized_mask_batch = tf.cast(tf.reshape(resized_mask_batch, [-1]), tf.float32)
+            mask = tf.reshape(resized_mask_batch, gt.get_shape())
 
         # Calculate the masked loss 
         epsilon = 0.00001 * tf.ones(prediction.get_shape(), tf.float32)
-        loss = tf.losses.sparse_softmax_cross_entropy(logits=prediction+epsilon, labels=gt, weights=mask)
+        if resized_mask_batch != None:
+            loss = tf.losses.sparse_softmax_cross_entropy(logits=prediction+epsilon, labels=gt, weights=mask)
+        else:
+            loss = tf.losses.sparse_softmax_cross_entropy(logits=prediction+epsilon, labels=gt)
         reduced_loss = tf.reduce_mean(loss)
         print(loss)
+
+
 
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         if update_ops:

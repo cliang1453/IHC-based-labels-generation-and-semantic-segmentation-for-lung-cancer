@@ -8,11 +8,17 @@ import matplotlib
 matplotlib.use('Qt4Agg')
 import matplotlib.pyplot as plt
 
-num_class = 4
-label_colours = [(224, 224, 224), (178, 102, 255), (255, 0, 0), (0, 0, 0)]
+
+
+
+# num_class = 4
+# label_colours = [(224, 224, 224), (178, 102, 255), (255, 0, 0), (0, 0, 0)]
 # class 0: Background: (224, 224, 224)
 # class 1: Tissue: (178, 102, 255)
 # class 2: Tumor : (255, 0, 0)
+
+num_class = 2
+label_colours = [(0, 0, 0), (0, 153, 0)]
 
 
 table_R = np.zeros(256, np.uint8)

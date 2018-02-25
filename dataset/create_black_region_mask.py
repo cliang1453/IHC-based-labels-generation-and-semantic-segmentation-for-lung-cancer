@@ -8,9 +8,9 @@ from matplotlib import pyplot as plt
 import os
 
 
-SELECTED_LABELRGB_DIR = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/reference/selected_labelRGB/'
-SELECTED_LABELMASK_DIR = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/reference/selected_labelMASK/'
-SELECTED_LABEL_DIR = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/reference/selected_label/'
+SELECTED_LABELRGB_DIR = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3/label_select_for_all_thres_rgb/'
+SELECTED_LABELMASK_DIR = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3/labelMask_select_for_all_thres/'
+SELECTED_LABEL_DIR = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3/stained_select/'
 
 
 # TODO

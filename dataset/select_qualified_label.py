@@ -9,9 +9,9 @@ import os
 
 
 
-DATA_DIRECTORY = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/reference/label/'
-SAVE_DIRECTORY = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/reference/test/'
-NOT_TRAIN_DIRECTORY = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/Registered_Mask/reference/no_training_label/'
+DATA_DIRECTORY = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3/stained_no_training_5/'
+SAVE_DIRECTORY = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3/stained_select_2/'
+NOT_TRAIN_DIRECTORY = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3/stained_no_training_6/'
 
 # MICRO_AP040 
 # 20000
@@ -42,42 +42,49 @@ def select(data_dir, save_dir, no_train_dir):
     """
     Compute IoU given the predicted colorized images and 
     """
-    image_path_list = 'label_to_select.txt'
-    imgs = open(image_path_list, 'rb').read().splitlines()
+    # image_path_list = 'label_to_select.txt'
+    # imgs = open(image_path_list, 'rb').read().splitlines()
 
-    for ind in range(len(imgs)):
-        img = cv2.imread(join(data_dir, imgs[ind].split('/')[-1]))
-        r, g, b = cv2.split(img)
-        r_dst = np.zeros(r.shape, dtype = r.dtype)
-        g_dst = np.zeros(g.shape, dtype = g.dtype)
-        b_dst = np.zeros(b.shape, dtype = b.dtype)
-        cv2.inRange(r, 80, 230, r_dst)
-        #print(cv2.countNonZero(r_dst))
-        cv2.inRange(g, 1, 100, g_dst)
-        #dst = np.zeros(r_dst.shape, dtype = r_dst.dtype)
-        #cv2.bitwise_and(r_dst, g_dst, dst) 
-        #print(cv2.countNonZero(dst))
-        cv2.inRange(b, 1, 100, b_dst)
-        #cv2.bitwise_and(r_dst, b_dst, dst) 
-        #print(cv2.countNonZero(dst))
-        #print(join(save_dir, imgs[ind].split('/')[-1]))
+    # for ind in range(len(imgs)):
+    for root, directories, files in os.walk(data_dir):
+        for file in files:
+            filename = os.path.basename(file)
+            img = cv2.imread(os.path.join(data_dir, filename))
+            # img = cv2.imread(join(data_dir, imgs[ind].split('/')[-1]))
+            r, g, b = cv2.split(img)
+            r_dst = np.zeros(r.shape, dtype = r.dtype)
+            g_dst = np.zeros(g.shape, dtype = g.dtype)
+            b_dst = np.zeros(b.shape, dtype = b.dtype)
+            cv2.inRange(r, 80, 230, r_dst)
+            #print(cv2.countNonZero(r_dst))
+            cv2.inRange(g, 1, 100, g_dst)
+            #dst = np.zeros(r_dst.shape, dtype = r_dst.dtype)
+            #cv2.bitwise_and(r_dst, g_dst, dst) 
+            #print(cv2.countNonZero(dst))
+            cv2.inRange(b, 1, 100, b_dst)
+            #cv2.bitwise_and(r_dst, b_dst, dst) 
+            #print(cv2.countNonZero(dst))
+            #print(join(save_dir, imgs[ind].split('/')[-1]))
 
-        
-        r_res = np.zeros(r_dst.shape, dtype = r_dst.dtype)
-        b_res = np.zeros(r_dst.shape, dtype = r_dst.dtype)
-        cv2.bitwise_and(r_dst, g_dst, r_res) 
-        cv2.bitwise_and(r_dst, b_dst, b_res)
+            
+            r_res = np.zeros(r_dst.shape, dtype = r_dst.dtype)
+            b_res = np.zeros(r_dst.shape, dtype = r_dst.dtype)
+            cv2.bitwise_and(r_dst, g_dst, r_res) 
+            cv2.bitwise_and(r_dst, b_dst, b_res)
 
-        # print(cv2.countNonZero(b_dst)) 
-        # print(cv2.countNonZero(r_res)) 
+            print(cv2.countNonZero(b_res)) 
+            print(cv2.countNonZero(r_res))
+            print(os.path.basename(filename))
 
-        if cv2.countNonZero(r_res)>40000:
-           print(cv2.countNonZero(r_res)) 
-           print(cv2.countNonZero(b_dst))
-           cv2.imwrite(join(save_dir, imgs[ind].split('/')[-1]),img)
-           print(join(save_dir, imgs[ind].split('/')[-1]))
-        else:
-           cv2.imwrite(join(no_train_dir, imgs[ind].split('/')[-1]),img)
+            if cv2.countNonZero(r_res)>8000:
+            # cv2.imwrite(join(save_dir, imgs[ind].split('/')[-1]),img)
+               
+               print(cv2.countNonZero(r_res)) 
+               cv2.imwrite(join(save_dir, filename),img)
+
+            else:
+               cv2.imwrite(join(no_train_dir, filename), img)
+               #cv2.imwrite(join(no_train_dir, imgs[ind].split('/')[-1]),img)
 
 
 
