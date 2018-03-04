@@ -80,10 +80,10 @@ import tensorflow as tf
 
 #################################HYPERPARAM#########################################
 TRAIN_LABEL_LIST = 'train_label_eric.txt'
-OUTPUT_DIR = '/media/chen/data2/Lung_project/eric_dataset/tfexample/'
+OUTPUT_DIR = '/home/chen/Downloads/Eric/tfexample/'
 #################################HYPERPARAM#########################################
 
-tf.app.flags.DEFINE_string('data_dir', '/media/chen/data2/Lung_project',
+tf.app.flags.DEFINE_string('data_dir', '/home/chen/Downloads',
                            'Data directory of HE_IHC')
 
 tf.app.flags.DEFINE_string('train_img_list', 'train_img_eric.txt',

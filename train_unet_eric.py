@@ -25,8 +25,8 @@ from models import UnetModel, ImageReaderEric, decode_labels, inv_preprocess
 BATCH_SIZE = 4
 IS_TRAINING = True
 IS_SIMPLIFIED = False
-DATA_DIRECTORY = '/media/chen/data2/Lung_project/new_dataset/tfexample/'#'/media/chen/data/Lung_project/dataset/simp_unet_tfexample/' ##'/media/chen/data/Lung_project/dataset/updated_tfexample_2/'#'
-DATASET_NAME = 'heihc' #dataset name consists of all lower case letters
+DATA_DIRECTORY = '/home/chen/Downloads/Eric/tfexample/'#'/media/chen/data/Lung_project/dataset/simp_unet_tfexample/' ##'/media/chen/data/Lung_project/dataset/updated_tfexample_2/'#'
+DATASET_NAME = 'eric' #dataset name consists of all lower case letters
 INPUT_SIZE = '512,512'
 LEARNING_RATE = 1e-4
 NUM_STEPS = 30001
@@ -36,9 +36,9 @@ FINETUNE_FROM = None #'/media/chen/data/Lung_project/dataset/test/fullunet_label
 SAVE_NUM_IMAGES = 4
 SAVE_PRED_EVERY = 20
 SAVE_MODEL_EVERY = 1000
-SNAPSHOT_DIR = '/media/chen/data2/Lung_project/new_dataset/new_test/'
+SNAPSHOT_DIR = '/home/chen/Downloads/Eric/snapshot/snapshot_lrdecay_30k/'
 NUM_CLASS = 2
-IMG_MEAN = np.array((191.94056702, 147.93313599, 179.39755249), dtype=np.float32) # This is in R,G,B order
+IMG_MEAN = np.array((175.99101257, 125.70479584, 165.71205139), dtype=np.float32) # This is in R,G,B order
 
 def get_arguments():
     """Parse all the arguments provided from the CLI.

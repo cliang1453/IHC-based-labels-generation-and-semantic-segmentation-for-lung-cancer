@@ -36,8 +36,8 @@ SPLITS_TO_SIZES = {
     # 'validation': 869,
     # 'train': 480,
     # 'validation': 4769,
-    'train': 6770,
-    'validation': 2671,
+    'train': 10265,
+    'validation': 1000,
 }
 
 NUM_CLASSES = 2
@@ -62,7 +62,7 @@ def get_split(split_name, dataset_dir, file_pattern=None, reader=None):
     """
     if not file_pattern:
         file_pattern = FILE_PATTERN
-    return dataset_common.get_split(split_name, dataset_dir,
+    return dataset_common_eric.get_split(split_name, dataset_dir,
                                       file_pattern, reader,
                                       SPLITS_TO_SIZES,
                                       ITEMS_TO_DESCRIPTIONS,

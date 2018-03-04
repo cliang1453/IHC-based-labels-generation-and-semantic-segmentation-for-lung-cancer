@@ -95,14 +95,14 @@ class UnetModel(object):
 
         # Prepare mask
 
-        if resized_mask_batch != None:
+        if mask_batch != None:
             resized_mask_batch = tf.image.resize_nearest_neighbor(mask_batch, tf.stack(raw_output.get_shape()[1:3]))
             resized_mask_batch = tf.cast(tf.reshape(resized_mask_batch, [-1]), tf.float32)
             mask = tf.reshape(resized_mask_batch, gt.get_shape())
 
         # Calculate the masked loss 
         epsilon = 0.00001 * tf.ones(prediction.get_shape(), tf.float32)
-        if resized_mask_batch != None:
+        if mask_batch != None:
             loss = tf.losses.sparse_softmax_cross_entropy(logits=prediction+epsilon, labels=gt, weights=mask)
         else:
             loss = tf.losses.sparse_softmax_cross_entropy(logits=prediction+epsilon, labels=gt)

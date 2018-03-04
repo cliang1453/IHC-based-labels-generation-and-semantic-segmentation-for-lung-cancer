@@ -20,7 +20,7 @@ from models import DeepLabV2Model, ImageReader, decode_labels
 
 
 IMAGE_PATH = '/data/orcs/chen/Cityscapes/leftImg8bit_trainvaltest/val/munster/munster_000010_000019_leftImg8bit.png'
-RESTORE_FROM = '/data/orcs/chen/dilation_test/snapshots_1/model.ckpt-19500'
+RESTORE_FROM = '/home/chen/Downloads/Eric/snapshot/snapshot_lrdecay_30k/model.ckpt-10000'
 SAVE_DIR = '/data/orcs/chen/dilation_test/images_eval/'
 
 IMG_MEAN = np.array((104.00698793,116.66876762,122.67891434), dtype=np.float32)

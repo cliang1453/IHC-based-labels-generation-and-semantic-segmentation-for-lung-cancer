@@ -5,11 +5,14 @@ from PIL import Image
 from os.path import join
 from scipy import misc
 
-DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/simptf_labelID/'#selected_labelID3 #'/media/chen/data/Lung_project/dataset/test/pretrained_eval/simp_unet_label_gen_1_9000/' #
-PRED_DIRECTORY = '/media/chen/data/Lung_project/simptf_unet_eval/snapshot_dropout_lrdecay_BN_2_9000/' #'/media/chen/data/Lung_project/simptf_unet_pretrained_eval/snapshot_dropout_lrdecay_BN_2_9000/'
+DATA_DIRECTORY = '/home/chen/Downloads/Eric/label/'#selected_labelID3 #'/media/chen/data/Lung_project/dataset/test/pretrained_eval/simp_unet_label_gen_1_9000/' #
+PRED_DIRECTORY = '/home/chen/Downloads/Eric/validation/snapshot_lrdecay_15k/' #'/media/chen/data/Lung_project/simptf_unet_pretrained_eval/snapshot_dropout_lrdecay_BN_2_9000/'
 IMAGE_PATH_LIST = 'image.txt'
 LABEL_PATH_LIST = 'label.txt'
 UNIFORM_SIZE = (500, 500)
+NUM_CLASSES = 2
+NAME_CLASSES = np.array(['background', 'tumor'])
+
 
 def fast_hist(a, b, n):
     if len(a) != len(b):
@@ -36,11 +39,8 @@ def compute_mIoU(gt_dir, pred_dir):
     """
     Compute IoU given the predicted colorized images and 
     """
-    with open('info.json', 'r') as fp:
-      info = json.load(fp)
-    num_classes = np.int(info['classes'])
-    name_classes = np.array(info['label'], dtype=np.str)
-    palette = np.array(info['palette'], dtype=np.uint8)
+    num_classes = NUM_CLASSES
+    name_classes = NAME_CLASSES
     hist = np.zeros((num_classes, num_classes))
     image_path_list = IMAGE_PATH_LIST
     label_path_list = LABEL_PATH_LIST

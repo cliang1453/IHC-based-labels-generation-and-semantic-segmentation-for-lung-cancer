@@ -28,23 +28,21 @@ import pprint
 
 #If evaluate GTA model on cityscapes dataset
 DATA_DIRECTORY = '/home/chen/Downloads/Eric/tfexample/'
-IS_TRAINING = False
+IS_TRAINING = True
 IS_SIMPLIFIED = False
-IS_GENERATING_NEW_LABELS = False
 DATASET_NAME = 'eric'
 EVAL_UNET = True
 NUM_STEPS = 1000 #7572#1517#4769#869 #2803 #
 INPUT_SIZE = '512,512'
 ORIGINAL_UNIFORM_SIZE = (500, 500)
-RESTORE_FROM = '/home/chen/Downloads/Eric/snapshot/snapshot_lrdecay_30k/model.ckpt-10000'
-SAVE_DIR_GRAY = '/home/chen/Downloads/Eric/validation/snapshot_lrdecay_30k/'
-SAVE_DIR_COLOR = '/home/chen/Downloads/Eric/validation/snapshot_lrdecay_30k_rgb/'
+RESTORE_FROM = '/home/chen/Downloads/Eric/snapshot/snapshot_lrdecay_30k/model.ckpt-15000'
+SAVE_DIR_GRAY = '/home/chen/Downloads/Eric/validation/snapshot_lrdecay_15k/'
+SAVE_DIR_COLOR = '/home/chen/Downloads/Eric/validation/snapshot_lrdecay_15k_rgb/'
 SAVE_IOU_EVERY = 50
 WEIGHTS_PATH   = None
 NUM_CLASS = 2
 NEED_FURTHER_EVAL = True
 IMG_MEAN = np.array((175.99101257, 125.70479584, 165.71205139), dtype=np.float32) # This is in R,G,B order
-MASK_CLASS_INDEX = 4
 EVA_TRAINSET = False
 
 
@@ -83,12 +81,6 @@ def get_arguments():
                         help="number of classes. "
                              "If not set, default to be 34.")
     parser.add_argument("--need_further_eval", type=bool, default=NEED_FURTHER_EVAL,
-                        help="need further accuracy evaluation."
-                             "If not set, default to be True.")
-    parser.add_argument("--mask_class_index", type=int, default=MASK_CLASS_INDEX,
-                        help="need further accuracy evaluation."
-                             "If not set, default to be True.")
-    parser.add_argument("--is_generating_new_labels", type=int, default=IS_GENERATING_NEW_LABELS,
                         help="need further accuracy evaluation."
                              "If not set, default to be True.")
     return parser.parse_args()
@@ -162,7 +154,7 @@ def main():
 
     # Load reader.
     with tf.name_scope("create_inputs"):
-        reader = ImageReader(dataset_name=args.dataset_name,
+        reader = ImageReaderEric(dataset_name=args.dataset_name,
                              dataset_split_name='validation',
                              dataset_dir=args.data_dir,
                              input_size=input_size,
@@ -170,7 +162,7 @@ def main():
                              image_mean=IMG_MEAN,
                              eva_trainset = EVA_TRAINSET)
 
-        image, label, mask, image_name= reader.image, reader.label, reader.mask, reader.image_name
+        image, label, image_name = reader.image, reader.label, reader.image_name
 
     image_batch, label_batch = tf.expand_dims(image, axis=0), tf.expand_dims(label, axis=0) # Add the batch dimension.
     # Create network.
@@ -191,7 +183,6 @@ def main():
             pred = tf.image.resize_nearest_neighbor(pred, reader.original_size)
     else:
         pred = tf.image.resize_nearest_neighbor(pred, ORIGINAL_UNIFORM_SIZE)
-        mask = tf.squeeze(tf.image.resize_nearest_neighbor(tf.expand_dims(mask, axis=0), ORIGINAL_UNIFORM_SIZE), axis=0)
 
     # Which variables to load.
     trainable = tf.trainable_variables()
@@ -244,22 +235,16 @@ def main():
         #_ = update_op.eval(session=sess)
         #preds, _, conf_updates, cnf_matrix = sess.run([pred, update_op, conf_update, conf])
         #preds, _= sess.run([pred, update_op])
-        preds, masks, filenames = sess.run([pred, mask, image_name])
+        preds, filenames = sess.run([pred, image_name])
 
         if args.need_further_eval:
             if args.save_dir_gray is not None:
-                if args.is_generating_new_labels is False:
-                    img = add_pred_mask(preds[0, :, :, 0], masks[:, :, 0], args.mask_class_index)
-                    im = Image.fromarray(img)
-                    im_name = os.path.basename(filenames)
-                    im.save(args.save_dir_gray + im_name)
-                else:
-                    im = Image.fromarray(preds[0, :, :, 0])
-                    im_name = os.path.basename(filenames)
-                    im.save(args.save_dir_gray + im_name)
+                im = Image.fromarray(preds[0, :, :, 0])
+                im_name = os.path.basename(filenames)
+                im.save(args.save_dir_gray + im_name)
 
         if args.save_dir_color is not None:
-            img = decode_labels_2_with_mask(preds[0, :, :, 0], masks[:, :, 0])
+            img = decode_labels_2(preds[0, :, :, 0])
             im = Image.fromarray(img)
             im_name = os.path.basename(filenames)
             im.save(args.save_dir_color + im_name)
