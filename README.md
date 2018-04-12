@@ -1,5 +1,5 @@
 # A Pipeline for Immunohistochemistry (IHC) Based Auto-Label Generation and Semantic Segmentation on Haematoxylin Eosin (H&E)
-Under-construction
+Implemented in Tensorflow 1.0. Under-construction
 
 ## Reference 
 [1] Ronneberger, Olaf, Philipp Fischer, and Thomas Brox. "U-net: Convolutional networks for biomedical image segmentation." International Conference on Medical image computing and computer-assisted intervention. Springer, Cham, 2015.
