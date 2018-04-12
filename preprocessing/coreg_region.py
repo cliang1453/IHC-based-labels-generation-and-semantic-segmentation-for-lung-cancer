@@ -16,7 +16,6 @@ import numpy as np
 import openslide  
 from openslide import open_slide  
 from openslide.deepzoom import DeepZoomGenerator  
-import pandas as pd
 
 from scipy.ndimage.morphology import binary_fill_holes, binary_closing, binary_dilation  
 from skimage.color import rgb2gray  
@@ -24,27 +23,23 @@ from skimage.morphology import closing, binary_closing, disk, remove_small_holes
 from skimage import color, morphology, filters, exposure, feature
 import xml.etree.ElementTree as ET
 
-IM_DIR = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/IHC-HE_3/HE/'
-STAINED_DIR = '/media/labshare/_Gertych_projects/_Lung_cancer/_SVS_/IHC-HE_3/IHC/'
-IM_SAVE_DIR = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3_2/images_rgb/'
-STAINED_SAVE_DIR = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3_2/stained_rgb/'
-BLEND_SAVE_DIR = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3_2/blend_rgb/'
-NO_TRANS_SAVE_DIR = '/media/chen/data2/Lung_project/new_dataset/IHC-HE_3_2/no_trans_blend_rgb/'
+# default values of parameters 
+IM_DIR = '/home/chen/Downloads/Eric/complete_model/svs/im/'
+STAINED_DIR = '/home/chen/Downloads/Eric/complete_model/svs/stained/'
+IM_SAVE_DIR = '/home/chen/Downloads/Eric/complete_model/im/'
+STAINED_SAVE_DIR = '/home/chen/Downloads/Eric/complete_model/stained/'
+BLEND_SAVE_DIR = '/home/chen/Downloads/Eric/complete_model/svs/blend/'
+LEVEL_1_CROP = 3000
+LEVEL_1_DOWNSAMPLE = 6
+LEVEL_2_CROP = 1200
+LEVEL_2_DOWNSAMPLE = 12
 
-
-LEVEL_1_CROP = 5000
-LEVEL_1_DOWNSAMPLE = 100
-
-LEVEL_2_CROP = 1000
-LEVEL_2_DOWNSAMPLE = 5
-
-LEVEL_3_CROP = 500
-
+# fixed global variables 
+LEVEL_3_CROP = 600
 MIN_MATCH_COUNT = 6
 FLANN_INDEX_KDTREE = 0
-RESIZE_NEEDED = False
 ROI_THRES = 0.8
-
+RESIZE_TO = 256
 
 
 def parse_annotation(name = None):
@@ -90,24 +85,21 @@ def _get_homography(src = None, dest = None, flann_ratio = 0.75):
 	kp1, des1 = sift.detectAndCompute(src, None)
 	kp2, des2 = sift.detectAndCompute(dest, None)
 
-	if des1 is None or des2 is None: 
+	if des1 is None or des2 is None:
 		print('Not enough descriptors found')
 		return None
-
-	#if len(des1)<1 or des2 is None
-
-	# index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
-	# search_params = dict(checks = 50)
-	# flann = cv2.FlannBasedMatcher(index_params, search_params)
+		
+	if len(kp1)<2 or len(kp2)<2:
+		print "Not enough key points found"
+		return None
+	index_params = dict(algorithm = FLANN_INDEX_KDTREE, trees = 5)
+	search_params = dict(checks = 50)
+	flann = cv2.FlannBasedMatcher(index_params, search_params)
+	matches = flann.knnMatch(des1,des2,k=2)
 	
-	# if len(kp1)<2 or len(kp2)<2:
-	# 	print "Not enough key points found"
-	# 	return None
-
-	# matches = flann.knnMatch(des1,des2,k=2)
-	bf = cv2.BFMatcher()
-	matches = bf.knnMatch(des1, des2, k=2)
-	print(matches)
+	# bf = cv2.BFMatcher()
+	# matches = bf.knnMatch(des1, des2, k=2)
+	# print(matches)
 
 	# store all the good matches as per Lowe's ratio test.
 	good = []
@@ -121,7 +113,6 @@ def _get_homography(src = None, dest = None, flann_ratio = 0.75):
 	
 	if len(good)>=MIN_MATCH_COUNT:
 
-
 	    src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
 	    dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
 
@@ -134,81 +125,77 @@ def _get_homography(src = None, dest = None, flann_ratio = 0.75):
 	    h,w = src.shape
 	    pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
 	    dst = cv2.perspectiveTransform(pts,M)
-
 	    src = cv2.polylines(dest,[np.int32(dst)],True,255,3, cv2.LINE_AA)
 	else:
 	    print "Not enough matches are found - %d/%d" % (len(good),MIN_MATCH_COUNT)
 	    return None
+	# draw_params = dict(matchColor = (0,255,0), # draw matches in green color
+	# 					singlePointColor = None,
+	# 					matchesMask = matchesMask, # draw only inliers
+	# 					flags = 2)
+	# final = cv2.drawMatches(src,kp1,dest,kp2,good,None,**draw_params)
 
-
-
-	draw_params = dict(matchColor = (0,255,0), # draw matches in green color
-                   singlePointColor = None,
-                   matchesMask = matchesMask, # draw only inliers
-                   flags = 2)
-	final = cv2.drawMatches(src,kp1,dest,kp2,good,None,**draw_params)
-
-	plt.imshow(final, 'gray'),plt.show()
+	# plt.imshow(final, 'gray'),plt.show()
 	return M
 	
 
-def _third_level_manipulation(im_full_size = None, stained_full_size = None, no_trans = None, original_size = (LEVEL_2_CROP, LEVEL_2_CROP), name = None, count = None):
+def _third_level_manipulation(im_full_size = None, stained_full_size = None, original_size = (args.level_2_crop, args.level_2_crop), name = None, count = None):
 
-	print('maximum crops in level III: 2*2=4')
+	print('maximum crops in level III:' + str(original_size[0]/LEVEL_3_CROP) + 
+		'*' + str(original_size[1]/LEVEL_3_CROP) + '=' + str(original_size[0]/LEVEL_3_CROP * original_size[1]/LEVEL_3_CROP))
 
 	for w in range(original_size[0]/LEVEL_3_CROP):
 		for h in range(original_size[1]/LEVEL_3_CROP):
 
 			im = im_full_size[h * LEVEL_3_CROP : (h+1) * LEVEL_3_CROP,  w * LEVEL_3_CROP: (w+1) * LEVEL_3_CROP].copy()  
 			stained = stained_full_size[h * LEVEL_3_CROP : (h+1) * LEVEL_3_CROP,  w * LEVEL_3_CROP: (w+1) * LEVEL_3_CROP].copy()  
-			no_trans = no_trans[h * LEVEL_3_CROP : (h+1) * LEVEL_3_CROP,  w * LEVEL_3_CROP: (w+1) * LEVEL_3_CROP].copy()
 			blend = cv2.addWeighted(im,0.5,stained,0.5,0)
+			
+			# discard crops with too much white regions (useless information) and black regions (due to homography transformation)
+			im = np.array(Image.fromarray(im.astype(np.uint8)).resize((RESIZE_TO, RESIZE_TO)))
+			if np.count_nonzero(im[im>230])/float(RESIZE_TO*RESIZE_TO*3) > 0.2:
+				continue
+			stained = np.array(Image.fromarray(stained.astype(np.uint8)).resize((RESIZE_TO, RESIZE_TO)))
+			if np.count_nonzero(stained[stained>230])/float(RESIZE_TO*RESIZE_TO*3) > 0.2 or np.count_nonzero(stained==0)/float(RESIZE_TO*RESIZE_TO*3) > 0.05:
+				continue
 
-			count[2] = count[2] + 1
-
+			count[1] = count[1] + 1
 			im_result = Image.fromarray(im.astype(np.uint8))
 			stained_result = Image.fromarray(stained.astype(np.uint8))
 			blend_result = Image.fromarray(blend.astype(np.uint8))
+			im_result.save(os.path.join(args.im_save_dir, name.strip('.svs') + str(count[0]) + '_' + str(count[1]) + '.png'))
+			stained_result.save(os.path.join(args.stained_save_dir, name.strip('.svs') + str(count[0]) + '_' + str(count[1])  + '.png'))
+			blend_result.save(os.path.join(args.blend_save_dir, name.strip('.svs') + str(count[0]) + '_' + str(count[1]) + '.png'))
 
-			im_result.save(os.path.join(IM_SAVE_DIR, name.strip('.svs') + str(count[0]) + '_' + str(count[1]) + '_' + str(count[2]) + '.png'))
-			stained_result.save(os.path.join(STAINED_SAVE_DIR, name.strip('.svs') + str(count[0]) + '_' + str(count[1]) + '_' + str(count[2]) + '.png'))
-			blend_result.save(os.path.join(BLEND_SAVE_DIR, name.strip('.svs') + str(count[0]) + '_' + str(count[1]) + '_' + str(count[2]) + '.png'))
+
+
+def _second_level_manipulation(im_full_size = None, stained_full_size = None, original_size = (args.level_1_crop, args.level_1_crop), name = None, count = None):
+
+	print('maximum crops in level II: ' + str(original_size[0]/args.level_2_crop) + 
+		'*' + str(original_size[1]/args.level_2_crop) + '=' + str(original_size[0]/args.level_2_crop * original_size[1]/args.level_2_crop))
+
+	for w in range(original_size[0]/args.level_2_crop):
+		for h in range(original_size[1]/args.level_2_crop):
 			
-			if w==0 and h==0:
-				blend_no_trans = cv2.addWeighted(im,0.5,no_trans,0.5,0)
-				blend_no_trans_result = Image.fromarray(blend_no_trans.astype(np.uint8))
-				blend_no_trans_result.save(os.path.join(NO_TRANS_SAVE_DIR, name.strip('.svs') + str(count[0]) + '_' + str(count[1]) + '_' + str(count[2]) + '.png'))
-
-
-
-def _second_level_manipulation(im_full_size = None, stained_full_size = None, original_size = (LEVEL_1_CROP, LEVEL_1_CROP), name = None, count = None):
-
-	print('maximum crops in level II: ' + str(original_size[0]/LEVEL_2_CROP) + 
-		'*' + str(original_size[1]/LEVEL_2_CROP) + '=' + str(original_size[0]/LEVEL_2_CROP * original_size[1]/LEVEL_2_CROP))
-
-	for w in range(original_size[0]/LEVEL_2_CROP):
-		for h in range(original_size[1]/LEVEL_2_CROP):
-			
-			im = im_full_size[h * LEVEL_2_CROP : (h+1) * LEVEL_2_CROP,  w * LEVEL_2_CROP: (w+1) * LEVEL_2_CROP].copy()  
-			stained = stained_full_size[h * LEVEL_2_CROP : (h+1) * LEVEL_2_CROP,  w * LEVEL_2_CROP: (w+1) * LEVEL_2_CROP].copy()  
+			im = im_full_size[h * args.level_2_crop : (h+1) * args.level_2_crop,  w * args.level_2_crop: (w+1) * args.level_2_crop].copy()  
+			stained = stained_full_size[h * args.level_2_crop : (h+1) * args.level_2_crop,  w * args.level_2_crop: (w+1) * args.level_2_crop].copy()  
 
 			im_gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
 			stained_gray = cv2.cvtColor(stained, cv2.COLOR_BGR2GRAY)
 
-			im_ds = cv2.resize(im_gray, None, fx=1.0/LEVEL_2_DOWNSAMPLE, fy=1.0/LEVEL_2_DOWNSAMPLE, interpolation = cv2.INTER_LINEAR)
-			stained_ds = cv2.resize(stained_gray, None, fx=1.0/LEVEL_2_DOWNSAMPLE, fy=1.0/LEVEL_2_DOWNSAMPLE, interpolation = cv2.INTER_LINEAR)
+			im_ds = cv2.resize(im_gray, None, fx=1.0/args.level_2_ds, fy=1.0/args.level_2_ds, interpolation = cv2.INTER_LINEAR)
+			stained_ds = cv2.resize(stained_gray, None, fx=1.0/args.level_2_ds, fy=1.0/args.level_2_ds, interpolation = cv2.INTER_LINEAR)
 
 			# Get Transformation matrix from stained_ds to im_ds
 			M = _get_homography(stained_ds, im_ds, flann_ratio = 0.75)
 			if M is None:
-				stained_transformed = stained
 				print('1000 * 1000 crop at position' + str(h) + ',' + str(w) + 'encounters problem in level II, discarded')
 			
 			if M is not None:
-				M[0][2] = M[0][2] *LEVEL_2_DOWNSAMPLE
-				M[1][2] = M[1][2] *LEVEL_2_DOWNSAMPLE
-				M[2][0] = M[2][0] /LEVEL_2_DOWNSAMPLE
-				M[2][1] = M[2][1] /LEVEL_2_DOWNSAMPLE
+				M[0][2] = M[0][2] *args.level_2_ds
+				M[1][2] = M[1][2] *args.level_2_ds
+				M[2][0] = M[2][0] /args.level_2_ds
+				M[2][1] = M[2][1] /args.level_2_ds
 
 				# Apply Transformation matrix to original resolution stained im crop
 				r = cv2.warpPerspective(stained[:, :, 0], M, (stained.shape[0], stained.shape[1]))
@@ -216,58 +203,44 @@ def _second_level_manipulation(im_full_size = None, stained_full_size = None, or
 				b = cv2.warpPerspective(stained[:, :, 2], M, (stained.shape[0], stained.shape[1]))
 				stained_transformed = cv2.merge((r, g, b))
 
-			count[1] = count[1] + 1
-			_third_level_manipulation(im_full_size = im, stained_full_size = stained_transformed, 
-				                      no_trans = stained, original_size = (LEVEL_2_CROP, LEVEL_2_CROP), name = name, count = count)
+				count[1] = count[1] + 1
+				_third_level_manipulation(im_full_size = im, stained_full_size = stained_transformed, 
+					                      original_size = (args.level_2_crop, args.level_2_crop), name = name, count = count)
 
 
 def _first_level_manipulation(im_full_size = None, stained_full_size = None, region_mask = None, 
-				original_size = None, crop_ratio = (1, 1), name = None, count = None):
+				              original_size = None, name = None, count = None, roi_check = False):
 
 
-	print('maximum crops in level I: ' + str(original_size[0]/LEVEL_1_CROP) + 
-		'*' + str(original_size[1]/LEVEL_1_CROP) + '=' + str(original_size[0]/LEVEL_1_CROP * original_size[1]/LEVEL_1_CROP))
-	crop_w_ratio = crop_ratio[0]
-	crop_h_ratio = crop_ratio[1]
-
+	print('maximum crops in level I: ' + str(original_size[0]/args.level_1_crop) + 
+		'*' + str(original_size[1]/args.level_1_crop) + '=' + str(original_size[0]/args.level_1_crop * original_size[1]/args.level_1_crop))
 	
-	for w in range(original_size[0]/LEVEL_1_CROP):
-		for h in range(original_size[1]/LEVEL_1_CROP):
+	for w in range(original_size[0]/args.level_1_crop):
+		for h in range(original_size[1]/args.level_1_crop):
 			
-			if(check_roi(w = w, h = h, region_mask = region_mask, crop_size = LEVEL_1_CROP) is False):
-				continue
+			if roi_check is True:
+				if(check_roi(w = w, h = h, region_mask = region_mask, crop_size = args.level_1_crop) is False):
+					continue
 
-			im = np.array(im_full_size.read_region((LEVEL_1_CROP * w, LEVEL_1_CROP * h), 0, (LEVEL_1_CROP , LEVEL_1_CROP)).convert('RGB'))
-			stained = np.array(stained_full_size.read_region((int(LEVEL_1_CROP * crop_w_ratio * w), int(LEVEL_1_CROP * crop_h_ratio * h)),
-				                          0, (int(LEVEL_1_CROP * crop_w_ratio), int(LEVEL_1_CROP * crop_h_ratio))).convert('RGB'))
-
-
-			if crop_w_ratio is not 1 or crop_h_ratio is not 1:
-				stained = cv2.resize(stained, (im.shape[0], im.shape[1]))
+			im = np.array(im_full_size.read_region((args.level_1_crop * w, args.level_1_crop * h), 0, (args.level_1_crop , args.level_1_crop)).convert('RGB'))
+			stained = np.array(stained_full_size.read_region((args.level_1_crop * w, args.level_1_crop * h), 0, (args.level_1_crop, args.level_1_crop)).convert('RGB'))
 
 			im_gray = cv2.cvtColor(im, cv2.COLOR_RGB2GRAY)
 			stained_gray = cv2.cvtColor(stained, cv2.COLOR_RGB2GRAY)
 
-			im_ds = cv2.resize(im_gray, None, fx=1.0/LEVEL_1_DOWNSAMPLE, fy=1.0/LEVEL_1_DOWNSAMPLE, interpolation = cv2.INTER_LINEAR)
-			stained_ds = cv2.resize(stained_gray, None, fx=1.0/LEVEL_1_DOWNSAMPLE, fy=1.0/LEVEL_1_DOWNSAMPLE, interpolation = cv2.INTER_LINEAR)
-
-
-			blend_ds = cv2.addWeighted(im_ds,0.5,stained_ds,0.5,0)
-			blend_ds_result = Image.fromarray(blend_ds.astype(np.uint8))
-			blend_ds_result.save(os.path.join("/media/chen/data2/Lung_project/new_dataset/IHC-HE_3_2/test/", name.strip('.svs') + str(count[0]) + '.png'))
-
+			im_ds = cv2.resize(im_gray, None, fx=1.0/args.level_1_ds, fy=1.0/args.level_1_ds, interpolation = cv2.INTER_LINEAR)
+			stained_ds = cv2.resize(stained_gray, None, fx=1.0/args.level_1_ds, fy=1.0/args.level_1_ds, interpolation = cv2.INTER_LINEAR)
 
 			#Get Transformation matrix from stained_ds to im_ds
 			M = _get_homography(stained_ds, im_ds, flann_ratio = 0.75)
 			if M is None:
-				print('3000 * 3000 crop at position' + str(h) + ',' + str(w) + 'encounters problem in level I, discarded')
-				stained_transformed = stained
+				print(str(args.level_1_crop) + '*' + str(args.level_1_crop) + 'crop at position' + str(h) + ',' + str(w) + 'encounters problem in level I, discarded')
 				
 			if M is not None:
-				M[0][2] = M[0][2] *LEVEL_1_DOWNSAMPLE
-				M[1][2] = M[1][2] *LEVEL_1_DOWNSAMPLE
-				M[2][0] = M[2][0] /LEVEL_1_DOWNSAMPLE
-				M[2][1] = M[2][1] /LEVEL_1_DOWNSAMPLE
+				M[0][2] = M[0][2] *args.level_1_ds
+				M[1][2] = M[1][2] *args.level_1_ds
+				M[2][0] = M[2][0] /args.level_1_ds
+				M[2][1] = M[2][1] /args.level_1_ds
 
 				# Apply Transformation matrix to original resolution stained im crop
 				r = cv2.warpPerspective(stained[:, :, 0], M, (stained.shape[0], stained.shape[1]))
@@ -275,72 +248,94 @@ def _first_level_manipulation(im_full_size = None, stained_full_size = None, reg
 				b = cv2.warpPerspective(stained[:, :, 2], M, (stained.shape[0], stained.shape[1]))
 				stained_transformed = cv2.merge((r, g, b))
 
-			count[0] = count[0] + 1
-			_second_level_manipulation(im_full_size = im, stained_full_size = stained_transformed, 
-				                       original_size = (LEVEL_1_CROP, LEVEL_1_CROP), name = name, count = count)
+				count[0] = count[0] + 1
+
+				if args.level_2_crop is not None: 
+					_second_level_manipulation(im_full_size = im, stained_full_size = stained_transformed, 
+						                       original_size = (args.level_1_crop, args.level_1_crop), name = name, count = count)
+				else:
+					_third_level_manipulation(im_full_size = im, stained_full_size = stained_transformed, 
+						                      original_size = (args.level_1_crop, args.level_1_crop), name = name, count = count)
 
 
 
+
+def get_arguments():
+    """Parse all the arguments provided from the CLI.
+    
+    Returns:
+      A list of parsed arguments.
+    """
+
+    parser = argparse.ArgumentParser(description="")
+    parser.add_argument("--im_dir", type=str, default=IM_DIR,
+                        help="H&E svs slide directory.")
+    parser.add_argument("--stained_dir", type=str, default=STAINED_DIR,
+                        help="IHC svs slide directory.")
+    parser.add_argument("--im_save_dir", type=str, default=IM_SAVE_DIR,
+                        help="H&E images save directory.")
+    parser.add_argument("--stained_save_dir", type=str, default=STAINED_SAVE_DIR,
+                        help="coregistered IHC images save directory.")
+    parser.add_argument("--blend_save_dir", type=str, default=BLEND_SAVE_DIR,
+                        help="coregistered blend images save directory.")
+    parser.add_argument("--level_1_crop", type=str, default=LEVEL_1_CROP,
+                        help="level 1 coregistration crop size.")
+    parser.add_argument("--level_1_ds", type=str, default=LEVEL_1_DOWNSAMPLE,
+                        help="level 1 coregistration downsample size.")
+    parser.add_argument("--level_2_crop", type=str, default=LEVEL_2_CROP,
+                        help="level 2 coregistration crop size.")
+    parser.add_argument("--level_2_ds", type=str, default=LEVEL_2_DOWNSAMPLE,
+                        help="level 2 coregistration downsample size.")
+
+    return parser.parse_args()
 
 def main():
 
-	for name in glob.glob(STAINED_DIR + '*.svs'):
+	args = get_arguments()
+	for name in glob.glob(args.args.stained_dir + '*.svs'):
+		
 		print('begin processing ' + os.path.basename(name))
-		# CASE I: Dealing with marked up region
+		
+		# Read images
+		im = open_slide(args.args.im_dir + os.path.basename(name).strip('CK.svs') + 'HE.svs')
+		stained = open_slide(name)
+
+		# Error checking
+		if(im is None or stained is None):
+			print('No image readed')
+			continue
+
+		if im.level_count <= 0 or stained.level_count <= 0:
+			print('Error image level')
+			continue
+
+		# Read 0 level images
+		im_size = im.level_dimensions[0]
+		stained_size = stained.level_dimensions[0]
+
 		if(os.path.isfile(name.strip('.svs')+ '.xml')):
-			# Read images
-			im = open_slide(IM_DIR + os.path.basename(name).strip('CK.svs') + 'HE.svs')
-			stained = open_slide(name)
-
-
-			# Error checking
-			if(im is None or stained is None):
-				print('No image readed')
-				continue
-
-			# Error checking 
-			if im.level_count <= 0 or stained.level_count <= 0:
-				print('Error image level')
-				continue
-
-			# Read 0 level images
-			im_size = im.level_dimensions[0]
-			stained_size = stained.level_dimensions[0]
-			print(im_size)
-			print(stained_size)
-
-			
 			# Read annotation file
 			region_list = parse_annotation(name = name.strip('.svs')+ '.xml')
 			region_mask = generate_mask(original_size = stained_size, region_list = region_list)
-			
-			if im_size != stained_size:
-				crop_w_ratio = np.float32(stained_size[0])/np.float32(im_size[0])
-				crop_h_ratio = np.float32(stained_size[1])/np.float32(im_size[1])
 
 			count = np.array([0,0,0], np.uint8)
 			_first_level_manipulation(im_full_size = im, stained_full_size = stained, region_mask = region_mask, 
-				original_size = stained_size, crop_ratio = (crop_w_ratio, crop_h_ratio), name = os.path.basename(name), count = count)
+				original_size = stained_size, name = os.path.basename(name), count = count, roi_check = True)
 			print(os.path.basename(name) + ' complished')
-			# Case II: Dealing with WSI
+		
 		else:
-			continue
+			count = np.array([0,0,0], np.uint8)
+			_first_level_manipulation(im_full_size = im, stained_full_size = stained, region_mask = None, 
+				original_size = stained_size, name = os.path.basename(name), count = count, roi_check = False)
+			print(os.path.basename(name) + ' complished')
 
-		#print(os.path.basename(name) + ' complished')
 
 if __name__ == '__main__':
 	
-	if not os.path.exists(IM_SAVE_DIR):
-		os.makedirs(IM_SAVE_DIR)
-	if not os.path.exists(STAINED_SAVE_DIR):
-		os.makedirs(STAINED_SAVE_DIR)
-	if not os.path.exists(BLEND_SAVE_DIR):
-		os.makedirs(BLEND_SAVE_DIR)
-	if not os.path.exists(NO_TRANS_SAVE_DIR):
-		os.makedirs(NO_TRANS_SAVE_DIR)
-	
+	if not os.path.exists(args.im_save_dir):
+		os.makedirs(args.im_save_dir)
+	if not os.path.exists(args.stained_save_dir):
+		os.makedirs(args.stained_save_dir)
+	if not os.path.exists(args.blend_save_dir):
+		os.makedirs(args.blend_save_dir)	
 	main()
-
-
-
-

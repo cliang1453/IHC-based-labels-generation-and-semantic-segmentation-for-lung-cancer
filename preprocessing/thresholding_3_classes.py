@@ -24,6 +24,7 @@ table_R = np.zeros(256, np.uint8)
 table_G = np.zeros(256, np.uint8)
 table_B = np.zeros(256, np.uint8)
 
+
 for i in range(num_class):
     table_R[i] = label_colours[i][0]
     table_G[i] = label_colours[i][1]
@@ -31,8 +32,6 @@ for i in range(num_class):
 
 
 def decode_labels(mask):
-
-
     h, w = mask.shape
     mask_R = np.zeros((h, w), np.uint8)
     mask_G = np.zeros((h, w), np.uint8)
@@ -54,19 +53,15 @@ def generate_tumor(hsv):
     lower_red = np.array([20,90,30])
     upper_red = np.array([255,255,240])
     mask = cv2.inRange(hsv, lower_red, upper_red)
-    #print(mask)
     im2, contours, hierarchy = cv2.findContours(mask,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)
-    #print(contours)
+
     for cnt in contours:
         cv2.drawContours(mask,[cnt],0,255,-1)
 
     mask = cv2.bitwise_not(mask)
     mask = np.divide(mask, 255).astype(np.bool)
-    
     mask = morphology.remove_small_holes(mask, min_size=500, connectivity=8, in_place=False)
-    
     mask = np.subtract(np.uint8(1), mask)
-
 
     return mask
 
@@ -75,7 +70,6 @@ def generate_background(hsv):
     lower_red = np.array([0, 0, 210])
     upper_red = np.array([255, 130, 255])
     mask = cv2.inRange(hsv, lower_red, upper_red)
-
     mask = cv2.bitwise_not(mask)
 
     im2, contours, hierarchy  = cv2.findContours(mask,cv2.RETR_CCOMP,cv2.CHAIN_APPROX_SIMPLE)
@@ -105,25 +99,13 @@ def select(data_dir, save_dir, save_rgb_dir):
 
           tumor_labelID = generate_tumor(hsv)
           background_labelID = generate_background(hsv)
-          #cv2.imwrite(join(save_dir, imgs[ind].split('/')[-1]),tumor_labelID*255)
-          # print(tumor_labelID.shape)
-          # print(background_labelID.shape)
-          # print(tumor_labelID)
-          # print(background_labelID)
-          # temp = np.array(tumor_labelID.shape, np.uint8)
-          # cv2.bitwise_or(background_labelID, tumor_labelID, temp)
-          # print(type(temp))
-
-
           tissue_labelID = np.subtract(1, cv2.bitwise_or(background_labelID, tumor_labelID))
-          #tissue_labelID = morphology.remove_small_holes(tissue_labelID.astype(np.bool), min_size=700, connectivity=8, in_place=False)
+          tissue_labelID = morphology.remove_small_holes(tissue_labelID.astype(np.bool), min_size=700, connectivity=8, in_place=False)
 
           
           final_mask = np.zeros(tumor_labelID.shape, np.uint8)
           final_mask = final_mask + tissue_labelID + 2*tumor_labelID
           super_threshold_indices = final_mask > 2
-          # print(cv2.countNonZero(final_mask>2))
-
           final_mask[super_threshold_indices] = 2
 
           
@@ -132,7 +114,6 @@ def select(data_dir, save_dir, save_rgb_dir):
           cv2.imwrite(join(save_rgb_dir, imgs),final_mask_RGB)
 
           print(join(save_dir, imgs))
-
 
 
 def main(args):

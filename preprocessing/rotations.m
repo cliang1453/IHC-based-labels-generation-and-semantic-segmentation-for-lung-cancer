@@ -16,14 +16,10 @@ for INDEX=1:length(imfilenames)
     
     [~,name,~]=fileparts(imfilename);
     
-    imwrite(img,colormap,[imfilepath imfilename]);
+    imwrite(img,[imfilepath imfilename]);
     
-    imwrite(fliplr(img),colormap,strrep([imfilepath imfilename],'.png','_f.png'));
-    imwrite(rot90(img,1),colormap,strrep([imfilepath imfilename],'.png','_r90.png'));
-    imwrite(rot90(img,2),colormap,strrep([imfilepath imfilename],'.png','_r180.png'));
-    imwrite(rot90(img,3),colormap,strrep([imfilepath imfilename],'.png','_r270.png'));
-    imwrite(fliplr(rot90(img,1)),colormap,strrep([imfilepath imfilename],'.png','_r90_f.png'));
-    imwrite(fliplr(rot90(img,2)),colormap,strrep([imfilepath imfilename],'.png','_r180_f.png'));
-    imwrite(fliplr(rot90(img,3)),colormap,strrep([imfilepath imfilename],'.png','_r270_f.png'));
-    
+
+    imwrite(rot90(img,1),strrep([imfilepath imfilename],'.png','_r90.png'));
+    imwrite(rot90(img,2),strrep([imfilepath imfilename],'.png','_r180.png'));
+    imwrite(rot90(img,3),strrep([imfilepath imfilename],'.png','_r270.png'));
 end
