@@ -1,10 +1,3 @@
-"""Training script for the DeepLab-LargeFOV network on the PASCAL VOC dataset
-   for semantic image segmentation.
-
-This script trains the model using augmented PASCAL VOC dataset,
-which contains approximately 10000 images for training and 1500 images for validation.
-"""
-
 from __future__ import print_function
 
 import argparse
@@ -18,43 +11,45 @@ import tensorflow as tf
 import numpy as np
 import cv2
 from os.path import join
+from models import *
 
-from models import UnetModel, ImageReaderEric, decode_labels, inv_preprocess
 
-
-BATCH_SIZE = 4
-IS_TRAINING = True
-IS_SIMPLIFIED = False
-DATA_DIRECTORY = '/home/chen/Downloads/Eric/tfexample/'#'/media/chen/data/Lung_project/dataset/simp_unet_tfexample/' ##'/media/chen/data/Lung_project/dataset/updated_tfexample_2/'#'
-DATASET_NAME = 'eric' #dataset name consists of all lower case letters
-INPUT_SIZE = '512,512'
-LEARNING_RATE = 1e-4
-NUM_STEPS = 30001
+BATCH_SIZE = 8
+BN = True
+DROP_OUT = True
+DATA_DIRECTORY = '/home/chen/Downloads/Eric/additional_svs/combined_self_eric/tfexample_logical_split/'
+DATASET_NAME = 'eric' 
+INPUT_SIZE = '256,256'
+LEARNING_RATE = 0.000039#e-4
+NUM_STEPS = 1501#15001
 RANDOM_SCALE = True
-RESTORE_FROM = None#'/media/chen/data2/Lung_project/dataset/init/SEC_init.ckpt'
-FINETUNE_FROM = None #'/media/chen/data/Lung_project/dataset/test/fullunet_label_gen_1/model.ckpt-9000'
+RESTORE_FROM = None
+FINETUNE_FROM = '/home/chen/Downloads/Eric/additional_svs/combined_self_eric/snapshot/snapshot_logical_split_2_dropout_continue/model.ckpt-2500'
 SAVE_NUM_IMAGES = 4
 SAVE_PRED_EVERY = 20
-SAVE_MODEL_EVERY = 1000
-SNAPSHOT_DIR = '/home/chen/Downloads/Eric/snapshot/snapshot_lrdecay_30k/'
+SAVE_MODEL_EVERY = 500
+SNAPSHOT_DIR = '/home/chen/Downloads/Eric/additional_svs/combined_self_eric/snapshot/snapshot_logical_split_2_dropout_continue_2/'
 NUM_CLASS = 2
-IMG_MEAN = np.array((175.99101257, 125.70479584, 165.71205139), dtype=np.float32) # This is in R,G,B order
+IMG_MEAN = np.array((198.32391, 159.94246, 176.50488), dtype=np.float32) # This is in R,G,B order
+#198.24429321, 159.76979065, 176.36216736
 
 def get_arguments():
-    """Parse all the arguments provided from the CLI.
-    
+    """Parse all the arguments.
     Returns:
       A list of parsed arguments.
     """
-    parser = argparse.ArgumentParser(description="DeepLabLFOV Network")
+
+    parser = argparse.ArgumentParser(description="Binary class segmentation segmentation labeler model modified on U-Net")
     parser.add_argument("--batch_size", type=int, default=BATCH_SIZE,
                         help="Number of images sent to the network in one step.")
-    parser.add_argument("--is_training", type=str, default=IS_TRAINING,
-                        help="Path to the directory containing the PASCAL VOC dataset.")
-    parser.add_argument("--is_simplified", type=str, default=IS_SIMPLIFIED,
-                        help="Path to the directory containing the PASCAL VOC dataset.")
+    parser.add_argument("--use_bn", type=bool, default=BN,
+                        help="batch normalization.")
+    parser.add_argument("--use_dropout", type=bool, default=DROP_OUT,
+                        help="drop out.")
+    parser.add_argument("--is_simplified", type=str, default=True,
+                        help="simplified or complete architecture. Default to be True when evaluate labeler model.")
     parser.add_argument("--data_dir", type=str, default=DATA_DIRECTORY,
-                        help="Path to the directory containing the PASCAL VOC dataset.")
+                        help="data directory for tfexamples.")
     parser.add_argument("--dataset_name", type=str, default=DATASET_NAME,
                         help="dataset name.")
     parser.add_argument("--input_size", type=str, default=INPUT_SIZE,
@@ -77,7 +72,7 @@ def get_arguments():
                         help="Where to save snapshots of the model.")
     parser.add_argument("--number_class", type=str, default=NUM_CLASS,
                         help="number of classes. "
-                             "If not set, default to be 34.")
+                             "If not set, default to be 2.")
     return parser.parse_args()
 
 def save(saver, sess, logdir, step):
@@ -123,60 +118,34 @@ def main():
     
     # Load reader.
     with tf.name_scope("create_inputs"):
-        # reader = ImageReader(
-        #     args.data_dir,
-        #     args.data_list,
-        #     is_training=True,
-        #     input_size=input_size,
-        #     random_scale=False,
-        #     coord=coord,
-        #     image_mean=IMG_MEAN)
-        reader = ImageReaderEric(dataset_name=args.dataset_name,
+        reader = LabelerImageReader(dataset_name=args.dataset_name,
                              dataset_split_name='train',
                              dataset_dir=args.data_dir,
                              input_size=input_size,
                              coord=coord,
-                             image_mean=IMG_MEAN,
-                             eva_trainset=False)
+                             image_mean=IMG_MEAN)
         image_batch, label_batch, labelRGB_batch = reader.dequeue(args.batch_size)
     
     # Create network.
-    net = UnetModel(args.number_class, args.is_training, args.is_simplified)
-    # starter_learning_rate = args.learning_rate
-    # # learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
-    # #                                            1000, 0.96, staircase=True)
-   
-    
-    # #learning_rate = starter_learning_rate
-    
+    net = UnetModel(args.number_class, args.use_bn, args.is_simplified, args.use_dropout)
 
-    # # Define the loss and optimisation parameters.
-    # update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-    # with tf.control_dependencies(update_ops):
-    #     pred, loss = net.loss(image_batch, label_batch, mask_batch)
-    #     global_step = tf.Variable(0, trainable=False)
-    #     learning_rate = tf.train.polynomial_decay(starter_learning_rate, global_step, args.num_steps,
-    #                                         end_learning_rate=0.00, power=0.9,
-    #                                         cycle=False, name=None)
-    #     optimiser = tf.train.AdamOptimizer(learning_rate=learning_rate)
-    #     # optimiser = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9, use_locking=False, use_nesterov=False)
-    #     trainable = tf.trainable_variables()
-    #     # Passing global_step to minimize() will increment it at each step.
-    #     optim = optimiser.minimize(loss, var_list=trainable, global_step=global_step)
-    #     # pred = net.preds(image_batch)
-
-     # Define the loss and optimisation parameters.
+    # Define the loss and optimisation parameters.
     pred, loss = net.loss(image_batch, label_batch, None)
 
     global_step = tf.Variable(0, trainable=False)
     starter_learning_rate = args.learning_rate
     
-    # learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step,
-    #                                            1000, 0.96, staircase=True)
+    # Exponential decay
+    # learning_rate = tf.train.exponential_decay(starter_learning_rate, global_step, 1000, 0.96, staircase=True)
+    
+    # Constant 
+    # learning_rate = starter_learning_rate
+    
+    # Polynomial decay
     learning_rate = tf.train.polynomial_decay(starter_learning_rate, global_step, args.num_steps,
                                             end_learning_rate=0.00, power=0.9,
                                             cycle=False, name=None)
-    #learning_rate = starter_learning_rate
+   
 
     optimiser = tf.train.AdamOptimizer(learning_rate=learning_rate)
     #optimiser = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9, use_locking=False, use_nesterov=False)
@@ -193,16 +162,13 @@ def main():
     # Image summary.
     images_summary = tf.py_func(inv_preprocess, [image_batch, args.save_num_images, IMG_MEAN], tf.uint8)
     labels_summary = tf.py_func(inv_preprocess, [labelRGB_batch, args.save_num_images, IMG_MEAN], tf.uint8)
-    #labels_summary = tf.py_func(decode_labels, [label_batch, args.save_num_images, args.number_class], tf.uint8)
     preds_summary = tf.py_func(decode_labels, [pred, args.save_num_images, args.number_class], tf.uint8)
-    
     total_summary = tf.summary.image('images', 
                                      tf.concat(axis=2, values=[images_summary, labels_summary, preds_summary]), 
                                      max_outputs=args.save_num_images) # Concatenate row-wise.
     final_summary = tf.summary.merge_all()
     summary_writer = tf.summary.FileWriter(args.snapshot_dir,
                                            graph=tf.get_default_graph())
-
 
     # Set up tf session and initialize variables. 
     config = tf.ConfigProto()
@@ -219,9 +185,8 @@ def main():
         variables_to_restore = tf.contrib.framework.get_variables_to_restore(include=["vgg_16/conv1", "vgg_16/conv2", "vgg_16/conv3", "vgg_16/conv4","vgg_16/conv5"])
         load2 = tf.contrib.framework.assign_from_checkpoint_fn(args.restore_from, variables_to_restore, ignore_missing_vars = True)                                                  
         load2(sess)
-        #load(saver, sess, args.restore_from)
+
     elif args.finetune_from is not None: 
-        # load(saver, sess, args.finetune_from)
         variables_to_restore = tf.contrib.framework.get_variables_to_restore()
         load2 = tf.contrib.framework.assign_from_checkpoint_fn(args.finetune_from, variables_to_restore, ignore_missing_vars = True)
         load2(sess)
@@ -237,12 +202,6 @@ def main():
             summary_writer.add_summary(summary, step)
         else:
             loss_value, _ , preds, label_batchs, image_batchs = sess.run([loss, optim, pred, label_batch, image_batch])
-            #image_batchs = inv_preprocess_with_mask(image_batchs, mask_batchs, 1, IMG_MEAN)
-            #print(label_batchs[0, :])
-            # print(label_batchs.shape)
-            # cv2.imwrite(join(args.snapshot_dir, str(step)+'.png'), preds[0,:])
-            # cv2.imwrite(join(args.snapshot_dir, 'label' +str(step)+'.png'), label_batchs[0,:])
-            # cv2.imwrite(join(args.snapshot_dir, 'image' +str(step)+'.png'), image_batchs[0,:])
 
         if step % args.save_model_every == 0:
             save(saver, sess, args.snapshot_dir, step)

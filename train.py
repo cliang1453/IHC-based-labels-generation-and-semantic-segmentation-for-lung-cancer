@@ -1,8 +1,5 @@
-"""Training script for the DeepLab-LargeFOV network on the PASCAL VOC dataset
+"""Training script for the DeepLab-LargeFOV network on the H&E-IHC
    for semantic image segmentation.
-
-This script trains the model using augmented PASCAL VOC dataset,
-which contains approximately 10000 images for training and 1500 images for validation.
 """
 
 from __future__ import print_function
@@ -17,8 +14,7 @@ import pprint
 import tensorflow as tf
 import numpy as np
 
-from models import DeepLabLFOVModel, ImageReader, decode_labels, decode_labels_with_mask, inv_preprocess, inv_preprocess_with_mask
-
+from models import *
 
 BATCH_SIZE = 4
 DATA_DIRECTORY = '/media/chen/data/Lung_project/dataset/simp_unet_tfexample/'#'/media/chen/data/Lung_project/dataset/updated_tfexample_2/'
@@ -46,7 +42,7 @@ def get_arguments():
     parser.add_argument("--batch_size", type=int, default=BATCH_SIZE,
                         help="Number of images sent to the network in one step.")
     parser.add_argument("--data_dir", type=str, default=DATA_DIRECTORY,
-                        help="Path to the directory containing the PASCAL VOC dataset.")
+                        help="tfexample data directory.")
     parser.add_argument("--dataset_name", type=str, default=DATASET_NAME,
                         help="dataset name.")
     parser.add_argument("--input_size", type=str, default=INPUT_SIZE,
@@ -115,13 +111,12 @@ def main():
     
     # Load reader.
     with tf.name_scope("create_inputs"):
-        reader = ImageReader(dataset_name=args.dataset_name,
+        reader = MaskedImageReader(dataset_name=args.dataset_name,
                              dataset_split_name='train',
                              dataset_dir=args.data_dir,
                              input_size=input_size,
                              coord=coord,
-                             image_mean=IMG_MEAN,
-                             eva_trainset = False)
+                             image_mean=IMG_MEAN)
         image_batch, label_batch, mask_batch, stained_batch, labelRGB_batch = reader.dequeue(args.batch_size)
     
     # Create network.
@@ -138,10 +133,10 @@ def main():
     learning_rate = tf.train.polynomial_decay(starter_learning_rate, global_step, args.num_steps,
                                             end_learning_rate=0.00, power=0.9,
                                             cycle=False, name=None)
-    #learning_rate = starter_learning_rate
+    # learning_rate = starter_learning_rate
 
     optimiser = tf.train.AdamOptimizer(learning_rate=learning_rate)
-    #optimiser = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9, use_locking=False, use_nesterov=False)
+    # optimiser = tf.train.MomentumOptimizer(learning_rate=learning_rate, momentum=0.9, use_locking=False, use_nesterov=False)
     trainable = tf.trainable_variables()
     # Passing global_step to minimize() will increment it at each step.
     optim = optimiser.minimize(loss, var_list=trainable, global_step=global_step)
@@ -181,9 +176,7 @@ def main():
         variables_to_restore = tf.contrib.framework.get_variables_to_restore(include=["vgg_16/conv1", "vgg_16/conv2", "vgg_16/conv3", "vgg_16/conv4","vgg_16/conv5"])
         load2 = tf.contrib.framework.assign_from_checkpoint_fn(args.restore_from, variables_to_restore, ignore_missing_vars = True)                                                  
         load2(sess)
-        #load(saver, sess, args.restore_from)
     elif args.finetune_from is not None: 
-        # load(saver, sess, args.finetune_from)
         variables_to_restore = tf.contrib.framework.get_variables_to_restore()
         load2 = tf.contrib.framework.assign_from_checkpoint_fn(args.finetune_from, variables_to_restore, ignore_missing_vars = True)
         load2(sess)

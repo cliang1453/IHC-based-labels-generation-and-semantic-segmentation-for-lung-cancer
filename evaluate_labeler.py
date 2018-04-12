@@ -1,5 +1,5 @@
-"""Evaluation script for the complete U-Net network on the validation set.
-This script evaluates the model on around 400 validation images.
+"""Evaluation of labeler
+Evaluate on 227 images in validation set
 """
 
 from __future__ import print_function
@@ -24,19 +24,19 @@ import pprint
 from models import *
 import pprint
 
-
-DATA_DIRECTORY = '/home/chen/Downloads/Eric/complete_model/tfexample_3/'
+# hyperparameters  
+DATA_DIRECTORY = '/home/chen/Downloads/Eric/complete_model/svs/labeler_inference_tfexample2/'#/home/chen/Downloads/Eric/additional_svs/combined_self_eric/tfexample_logical_split/'
+DATASET_NAME = 'labeler'
 BN = True
-DATASET_NAME = 'heihc'
-NUM_STEPS = 409
+NUM_STEPS = 25304 #227 #1809
 INPUT_SIZE = '256,256'
-RESTORE_FROM = '/home/chen/Downloads/Eric/complete_model/snapshot/snapshot_3/model.ckpt-17500'
-SAVE_DIR_GRAY = '/home/chen/Downloads/Eric/complete_model/validation/snapshot_3_17.5k/'
-SAVE_DIR_COLOR = '/home/chen/Downloads/Eric/complete_model/validation/snapshot_3_17.5k_rgb/'
+RESTORE_FROM = '/home/chen/Downloads/Eric/additional_svs/combined_self_eric/snapshot/snapshot_logical_split_2_dropout_continue/model.ckpt-2000'
+SAVE_DIR_GRAY = '/home/chen/Downloads/Eric/complete_model/label_2/'
+SAVE_DIR_COLOR = '/home/chen/Downloads/Eric/complete_model/rgblabel_2/'
 SAVE_IOU_EVERY = 50
 NUM_CLASS = 2
 NEED_FURTHER_EVAL = True
-IMG_MEAN = np.array((174.72176, 117.12812, 159.1917), dtype=np.float32) # This is in R,G,B order
+IMG_MEAN = np.array((198.32391, 159.94246, 176.50488), dtype=np.float32) 
 
 
 def get_arguments():
@@ -45,15 +45,15 @@ def get_arguments():
     Returns:
       A list of parsed arguments.
     """
-    parser = argparse.ArgumentParser(description="Evaluation of tumor prediction model.")
+    parser = argparse.ArgumentParser(description="Evaluation of labeler model.")
     parser.add_argument("--data_dir", type=str, default=DATA_DIRECTORY,
-                        help="tfexample data directory.")
-    parser.add_argument("--use_bn", type=str, default=BN,
+                        help="Data directory for tfexamples.")
+    parser.add_argument("--use_bn", type=bool, default=BN,
                         help="batch normalization.")
     parser.add_argument("--use_dropout", type=bool, default=False,
                         help="drop out. Default to be false in evaluation.")
-    parser.add_argument("--is_simplified", type=bool, default=False,
-                        help="simplified or complete architecture. Default to be false in tumor prediction model.")
+    parser.add_argument("--is_simplified", type=str, default=True,
+                        help="simplified or complete architecture. Default to be True when evaluate labeler model.")
     parser.add_argument("--dataset_name", type=str, default=DATASET_NAME,
                         help="dataset name.")
     parser.add_argument("--num_steps", type=int, default=NUM_STEPS,
@@ -65,7 +65,7 @@ def get_arguments():
     parser.add_argument("--save_dir_gray", type=str, default=SAVE_DIR_GRAY,
                         help="Where to save predicted masks.")
     parser.add_argument("--save_dir_color", type=str, default=SAVE_DIR_COLOR,
-                        help="Where to save predicted masks.")
+                        help="Where to save predicted color masks.")
     parser.add_argument("--save_IoU_every", type=int, default=SAVE_IOU_EVERY,
                         help="Save iou with predictions and ground truth every often.")
     parser.add_argument("--number_class", type=str, default=NUM_CLASS,
@@ -114,15 +114,14 @@ def main():
 
     # Load reader.
     with tf.name_scope("create_inputs"):
-        reader = ImageReader(dataset_name=args.dataset_name,
-                             dataset_split_name='validation',
-                             dataset_dir=args.data_dir,
-                             input_size=input_size,
-                             coord=coord,
-                             image_mean=args.image_mean)
+        reader = LabelerImageReader(dataset_name=args.dataset_name,
+                                 dataset_split_name='validation',
+                                 dataset_dir=args.data_dir,
+                                 input_size=input_size,
+                                 coord=coord,
+                                 image_mean=args.image_mean)
 
         image, label, image_name = reader.image, reader.label, reader.image_name
-
     image_batch, label_batch = tf.expand_dims(image, axis=0), tf.expand_dims(label, axis=0) # Add the batch dimension.
     
     # Create network.
@@ -151,7 +150,7 @@ def main():
     # Start queue threads.
     threads = tf.train.start_queue_runners(coord=coord, sess=sess)
 
-    # Iterate over images.
+     # Iterate over images.
     for step in range(args.num_steps):
 
         preds, filenames = sess.run([pred, image_name])
@@ -171,6 +170,7 @@ def main():
     print('finished')
     coord.request_stop()
     coord.join(threads)
+
         
     
 if __name__ == '__main__':
