@@ -2,15 +2,16 @@ import numpy as np
 import argparse
 import json
 from PIL import Image
+import os
 from os.path import join
 from scipy import misc
+import glob
 
-DATA_DIRECTORY = '/home/chen/Downloads/Eric/additional_svs/combined_self_eric/label/'
-PRED_DIRECTORY = '/home/chen/Downloads/Eric/additional_svs/combined_self_eric/validation/snapshot_1_9k/' 
-IMAGE_PATH_LIST = 'image.txt'
-LABEL_PATH_LIST = 'label.txt'
+DATA_DIRECTORY = '/home/chen/Downloads/Eric/complete_model/label/'
+PRED_DIRECTORY = '/home/chen/Downloads/Eric/complete_model/validation/snapshot_3_17k/'
 UNIFORM_SIZE = (256, 256)
 NUM_CLASSES = 2
+LENTH = 409 #227 #883
 NAME_CLASSES = np.array(['background', 'tumor'])
 
 
@@ -38,19 +39,16 @@ def compute_mIoU(gt_dir, pred_dir):
     num_classes = NUM_CLASSES
     name_classes = NAME_CLASSES
     hist = np.zeros((num_classes, num_classes))
-    image_path_list = IMAGE_PATH_LIST
-    label_path_list = LABEL_PATH_LIST
-
-    gt_imgs = open(label_path_list, 'rb').read().splitlines()
-    pred_imgs = open(image_path_list, 'rb').read().splitlines()
-
-    for ind in range(len(gt_imgs)):
-        pred = np.array(Image.open(join(pred_dir, pred_imgs[ind].split('/')[-1])))
-        label = np.array(Image.open(join(gt_dir, gt_imgs[ind])))
+    
+    ind = 0
+    for filename in glob.glob(pred_dir + '*.png'):
+        pred = np.array(Image.open(join(pred_dir, os.path.basename(filename))))
+        label = np.array(Image.open(join(gt_dir, os.path.basename(filename))))
         label = misc.imresize(label, UNIFORM_SIZE, interp='bilinear', mode=None)
         hist += fast_hist(label.flatten(), pred.flatten(), num_classes)
         if ind > 0 and ind % 10 == 0:
-            print('{:d} / {:d}: {:0.2f}'.format(ind, len(gt_imgs), 100*np.mean(per_class_iu(hist))))
+            print('{:d} / {:d}: {:0.2f}'.format(ind, LENTH, 100*np.mean(per_class_iu(hist))))
+        ind = ind + 1
     
     mIoUs = per_class_iu(hist)
     for ind_class in range(num_classes):
