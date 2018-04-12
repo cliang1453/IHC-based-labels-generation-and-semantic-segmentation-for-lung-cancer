@@ -19,11 +19,11 @@ from __future__ import division
 from __future__ import print_function
 
 from dataset import heihc
-from dataset import eric
+from dataset import labeler
 
 datasets_map = {
     'heihc': heihc,
-    'eric' : eric,
+    'labeler' : labeler,
 }
 
 

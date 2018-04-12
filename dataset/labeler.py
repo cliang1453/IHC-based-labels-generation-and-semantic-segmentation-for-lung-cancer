@@ -15,11 +15,11 @@
 """Provides data for the Pascal VOC Dataset (images + annotations).
 """
 import tensorflow as tf
-from dataset import dataset_common_eric
+from dataset import dataset_common_labeler
 
 slim = tf.contrib.slim
 
-FILE_PATTERN = '%s_eric-*'
+FILE_PATTERN = '%s_labeler-*'
 ITEMS_TO_DESCRIPTIONS = {
     'image': 'A color image of varying height and width.',
     'labelID' : 'Segmentation mask GT',
@@ -32,12 +32,8 @@ ITEMS_TO_DESCRIPTIONS = {
 }
 
 SPLITS_TO_SIZES = {
-    # 'train': 2803,
-    # 'validation': 869,
-    # 'train': 480,
-    # 'validation': 4769,
-    'train': 10265,
-    'validation': 1000,
+    'train': 13674,
+    'validation': 91,
 }
 
 NUM_CLASSES = 2

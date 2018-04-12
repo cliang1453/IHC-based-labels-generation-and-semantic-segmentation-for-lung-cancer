@@ -79,28 +79,20 @@ import tensorflow as tf
 
 
 #################################HYPERPARAM#########################################
-LABEL_GEN = False
-LABELID_DIR ='/media/chen/data2/Lung_project/'
-LABELRGB_DIR = '/media/chen/data2/Lung_project/'
-TRAIN_LABEL_LIST = 'train_label_combined_noaug.txt'
-OUTPUT_DIR = '/media/chen/data2/Lung_project/new_dataset/tfexample/'
+OUTPUT_DIR = '/home/chen/Downloads/Eric/complete_model/tfexample_3/'
 #################################HYPERPARAM#########################################
 
-tf.app.flags.DEFINE_string('data_dir', '/media/chen/data2/Lung_project',
-                           'Data directory of HE_IHC')
-tf.app.flags.DEFINE_string('labelID_dir', LABELID_DIR,
-                           'Data directory of HE_IHC')
-tf.app.flags.DEFINE_string('labelRGB_dir', LABELRGB_DIR,
+tf.app.flags.DEFINE_string('data_dir', '/home/chen/Downloads',
                            'Data directory of HE_IHC')
 
-tf.app.flags.DEFINE_string('train_img_list', 'train_img_combined_noaug.txt',
+tf.app.flags.DEFINE_string('train_img_list', 'train_img_combined.txt',
                            'Training data list of HE_IHC')
-tf.app.flags.DEFINE_string('train_label_list', TRAIN_LABEL_LIST,
+tf.app.flags.DEFINE_string('train_label_list', 'train_label_combined.txt',
                            'Training data list of HE_IHC')
 
-tf.app.flags.DEFINE_string('validation_img_list', 'val_img_combined_noaug.txt',
+tf.app.flags.DEFINE_string('validation_img_list', 'val_img_combined.txt',
                            'Validation data list of HE_IHC')
-tf.app.flags.DEFINE_string('validation_label_list', 'val_label_combined_noaug.txt',
+tf.app.flags.DEFINE_string('validation_label_list', 'val_label_combined.txt',
                            'Validation data list of HE_IHC')
 
 tf.app.flags.DEFINE_string('output_directory', OUTPUT_DIR,
@@ -139,7 +131,7 @@ def _bytes_feature(value):
 
 
 def _convert_to_example(image_file, image_buffer, stained_file, stained_buffer, labelID_file, labelID_buffer, 
-                        labelRGB_file, labelRGB_buffer, labelMask_file, labelMask_buffer, height, width):
+                        labelRGB_file, labelRGB_buffer, height, width):
   """Build an Example proto for an example.
 
   Args:
@@ -161,13 +153,11 @@ def _convert_to_example(image_file, image_buffer, stained_file, stained_buffer, 
   stained_channels = 3
   labelID_channels = 1
   labelRGB_channels = 3
-  labelMask_channels = 1
 
   image_format = 'PNG'
   stained_format = 'PNG'
   labelID_format = 'PNG'
   labelRGB_format = 'PNG'
-  labelMask_format = 'PNG'
 
 
   example = tf.train.Example(features=tf.train.Features(feature={
@@ -192,12 +182,7 @@ def _convert_to_example(image_file, image_buffer, stained_file, stained_buffer, 
       'labelRGB/labelRGB_file': _bytes_feature(os.path.basename(labelRGB_file)),
       'labelRGB/encoded': _bytes_feature(labelRGB_buffer),
       'labelRGB/format': _bytes_feature(labelRGB_format),
-      'labelRGB/channel': _int64_feature(labelRGB_channels),
-
-      'labelMask/labelMask_file': _bytes_feature(os.path.basename(labelMask_file)),
-      'labelMask/encoded': _bytes_feature(labelMask_buffer),
-      'labelMask/format': _bytes_feature(labelMask_format),
-      'labelMask/channel': _int64_feature(labelMask_channels)}))
+      'labelRGB/channel': _int64_feature(labelRGB_channels)}))
   
   return example
 
@@ -337,7 +322,7 @@ def _process_segmask(filename, coder):
   return segmask_data, height, width
 
 
-def _process_image_files_batch(coder, thread_index, ranges, name, image_files, stained_files, labelID_files, labelRGB_files, labelMask_files,
+def _process_image_files_batch(coder, thread_index, ranges, name, image_files, stained_files, labelID_files, labelRGB_files,
                                num_shards):
   """Processes and saves list of images as TFRecord in 1 thread.
 
@@ -379,14 +364,11 @@ def _process_image_files_batch(coder, thread_index, ranges, name, image_files, s
       stained_file = stained_files[i]
       labelID_file = labelID_files[i]
       labelRGB_file = labelRGB_files[i]
-      labelMask_file = labelMask_files[i]
-
 
       image_buffer, height, width = _process_image(image_file, coder)
       stained_buffer, stained_height, stained_width = _process_image(stained_file, coder)
       labelID_buffer, labelID_height, labelID_width = _process_segmask(labelID_file, coder)
       labelRGB_buffer, labelRGB_height, labelRGB_width = _process_image(labelRGB_file, coder)
-      labelMask_buffer, labelMask_height, labelMask_width = _process_segmask(labelMask_file, coder)
 
       if height!=stained_height:
         print('height not equal')
@@ -398,7 +380,7 @@ def _process_image_files_batch(coder, thread_index, ranges, name, image_files, s
       assert width == stained_width
 
       example = _convert_to_example(image_file, image_buffer, stained_file, stained_buffer, labelID_file, labelID_buffer, 
-                                    labelRGB_file, labelRGB_buffer, labelMask_file, labelMask_buffer, height, width)
+                                    labelRGB_file, labelRGB_buffer, height, width)
       writer.write(example.SerializeToString())
       shard_counter += 1
       counter += 1
@@ -417,7 +399,7 @@ def _process_image_files_batch(coder, thread_index, ranges, name, image_files, s
   sys.stdout.flush()
 
 
-def _process_image_files(name, image_files, stained_files, labelID_files, labelRGB_files, labelMask_files, num_shards):
+def _process_image_files(name, image_files, stained_files, labelID_files, labelRGB_files, num_shards):
   """Process and save list of images as TFRecord of Example protos.
 
   Args:
@@ -447,7 +429,7 @@ def _process_image_files(name, image_files, stained_files, labelID_files, labelR
   coder = ImageCoder()
   threads = []
   for thread_index in xrange(len(ranges)):
-    args = (coder, thread_index, ranges, name, image_files, stained_files, labelID_files, labelRGB_files, labelMask_files,
+    args = (coder, thread_index, ranges, name, image_files, stained_files, labelID_files, labelRGB_files,
             num_shards)
     t = threading.Thread(target=_process_image_files_batch, args=args)
     t.start()
@@ -461,7 +443,7 @@ def _process_image_files(name, image_files, stained_files, labelID_files, labelR
 
 def _read_labels(files_img_list, files_label_list, data_dir, labelID_dir, labelRGB_dir):
 
-  image_files, stained_files, labelID_files, labelRGB_files, labelMask_files = [], [], [], [], []
+  image_files, stained_files, labelID_files, labelRGB_files = [], [], [], []
   
   print('Processing lists of images from %s.' % files_img_list)
   with open(files_img_list, 'r') as f:
@@ -472,13 +454,10 @@ def _read_labels(files_img_list, files_label_list, data_dir, labelID_dir, labelR
   print('Processing lists of images from %s.' % files_label_list)
   with open(files_label_list, 'r') as f:
     for line in f:
-      stained, labelID, labelRGB, labelMask = line.strip("\n").split(' ')
-      labelMask = labelMask.strip("\r")
+      stained, labelID, labelRGB = line.strip("\n").split(' ')
       stained_files.append(data_dir + stained)
       labelID_files.append(labelID_dir + labelID)
       labelRGB_files.append(labelRGB_dir + labelRGB)
-      labelMask_files.append(data_dir + labelMask)
-
 
   # Shuffle the ordering of all image files in order to guarantee
   # random ordering of the images with respect to label in the
@@ -491,9 +470,8 @@ def _read_labels(files_img_list, files_label_list, data_dir, labelID_dir, labelR
   stained_files = [stained_files[i] for i in shuffled_index]
   labelID_files = [labelID_files[i] for i in shuffled_index]
   labelRGB_files = [labelRGB_files[i] for i in shuffled_index]
-  labelMask_files =  [labelMask_files[i] for i in shuffled_index]
 
-  return image_files, stained_files, labelID_files, labelRGB_files, labelMask_files
+  return image_files, stained_files, labelID_files, labelRGB_files
 
 
 def _process_dataset(name, files_img_list, files_label_list, num_shards, data_dir, labelID_dir, labelRGB_dir):
@@ -505,8 +483,8 @@ def _process_dataset(name, files_img_list, files_label_list, num_shards, data_di
     num_shards: integer number of shards for this data set.
     labels_file: string, path to the labels file.
   """
-  image_files, stained_files, labelID_files, labelRGB_files, labelMask_files = _read_labels(files_img_list, files_label_list, data_dir, labelID_dir, labelRGB_dir)
-  _process_image_files(name, image_files, stained_files, labelID_files, labelRGB_files, labelMask_files, num_shards)
+  image_files, stained_files, labelID_files, labelRGB_files = _read_labels(files_img_list, files_label_list, data_dir, labelID_dir, labelRGB_dir)
+  _process_image_files(name, image_files, stained_files, labelID_files, labelRGB_files, num_shards)
 
 
 def main(unused_argv):
@@ -521,12 +499,8 @@ def main(unused_argv):
   _process_dataset('validation_heihc', FLAGS.validation_img_list, FLAGS.validation_label_list,
                      FLAGS.validation_shards, data_dir = FLAGS.data_dir, labelID_dir = FLAGS.data_dir, labelRGB_dir = FLAGS.data_dir)
 
-  if LABEL_GEN == True:
-    _process_dataset('train_heihc', FLAGS.train_img_list, FLAGS.train_label_list,
-                      FLAGS.train_shards, data_dir = FLAGS.data_dir, labelID_dir = FLAGS.labelID_dir, labelRGB_dir = FLAGS.labelRGB_dir)
-  else:
-    _process_dataset('train_heihc', FLAGS.train_img_list, FLAGS.train_label_list,
-                      FLAGS.train_shards, data_dir = FLAGS.data_dir, labelID_dir = FLAGS.data_dir, labelRGB_dir = FLAGS.data_dir)
+  _process_dataset('train_heihc', FLAGS.train_img_list, FLAGS.train_label_list,
+                     FLAGS.train_shards, data_dir = FLAGS.data_dir, labelID_dir = FLAGS.data_dir, labelRGB_dir = FLAGS.data_dir)
 
 
 if __name__ == '__main__':

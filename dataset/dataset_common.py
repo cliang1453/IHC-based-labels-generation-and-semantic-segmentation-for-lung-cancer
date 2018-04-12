@@ -45,7 +45,7 @@ def get_split(split_name, dataset_dir, file_pattern, reader,
     # Allowing None in the signature so that dataset_factory can use the default.
     if reader is None:
         reader = tf.TFRecordReader
-    # Features in Pascal VOC TFRecords.
+        
     keys_to_features = {
 
         'image/height': tf.FixedLenFeature([1], tf.int64),
@@ -69,12 +69,7 @@ def get_split(split_name, dataset_dir, file_pattern, reader,
         'labelRGB/labelRGB_file': tf.FixedLenFeature((), tf.string, default_value=''),
         'labelRGB/encoded': tf.FixedLenFeature((), tf.string, default_value=''),
         'labelRGB/channel': tf.FixedLenFeature([1], tf.int64),
-        'labelRGB/format': tf.FixedLenFeature((), tf.string, default_value='png'),
-
-        'labelMask/labelMask_file': tf.FixedLenFeature((), tf.string, default_value=''),
-        'labelMask/encoded': tf.FixedLenFeature((), tf.string, default_value=''),
-        'labelMask/channel': tf.FixedLenFeature([1], tf.int64),
-        'labelMask/format': tf.FixedLenFeature((), tf.string, default_value='png')
+        'labelRGB/format': tf.FixedLenFeature((), tf.string, default_value='png')
         
     }
 
@@ -83,16 +78,11 @@ def get_split(split_name, dataset_dir, file_pattern, reader,
         'stained' : slim.tfexample_decoder.Image('stained/encoded', 'stained/format', channels=3),
         'labelID' : slim.tfexample_decoder.Image('labelID/encoded', 'labelID/format', channels=1),
         'labelRGB' : slim.tfexample_decoder.Image('labelRGB/encoded', 'labelRGB/format', channels=3),
-        'labelMask' : slim.tfexample_decoder.Image('labelMask/encoded', 'labelMask/format', channels=1),
 
         'width': slim.tfexample_decoder.Tensor('image/width'),
         'height': slim.tfexample_decoder.Tensor('image/height'),
         
         'img_filename' : slim.tfexample_decoder.Tensor('image/image_file')
-        # 'stained_filename' : slim.tfexample_decoder.Tensor('stained/stained_file'),
-        # 'labelID_filename' : slim.tfexample_decoder.Tensor('labelID/labelID_file'),
-        # 'labelRGB_filename' : slim.tfexample_decoder.Tensor('labelRGB/labelRGB_file'),
-        # 'labelMask_filename' : slim.tfexample_decoder.Tensor('labelMask/labelMask_file')
     }
 
     decoder = slim.tfexample_decoder.TFExampleDecoder(

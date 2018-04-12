@@ -77,10 +77,6 @@ def get_split(split_name, dataset_dir, file_pattern, reader,
         'height': slim.tfexample_decoder.Tensor('image/height'),
         
         'img_filename' : slim.tfexample_decoder.Tensor('image/image_file')
-        # 'stained_filename' : slim.tfexample_decoder.Tensor('stained/stained_file'),
-        # 'labelID_filename' : slim.tfexample_decoder.Tensor('labelID/labelID_file'),
-        # 'labelRGB_filename' : slim.tfexample_decoder.Tensor('labelRGB/labelRGB_file'),
-        # 'labelMask_filename' : slim.tfexample_decoder.Tensor('labelMask/labelMask_file')
     }
 
     decoder = slim.tfexample_decoder.TFExampleDecoder(

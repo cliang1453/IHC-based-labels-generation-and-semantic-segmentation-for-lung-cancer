@@ -25,7 +25,6 @@ ITEMS_TO_DESCRIPTIONS = {
     'stained' : 'A stained image which is the indication of GT',
     'labelID' : 'Segmentation mask GT',
     'labelRGB' :'Colored segmentation mask GT',
-    'labelMask' : 'Mask that exclude the out of interest region',
 
     'width': 'image width',
     'height': 'image height',
@@ -38,11 +37,16 @@ SPLITS_TO_SIZES = {
     # 'validation': 869,
     # 'train': 480,
     # 'validation': 4769,
-    'train': 7572,
-    'validation': 1517,
+    # 'train': 24720,
+    # 'validation': 883,
+    # 'train': 23192,
+    # 'validation': 528
+    'train': 17976,
+    'validation': 409
+
 }
 
-NUM_CLASSES = 3
+NUM_CLASSES = 2
 
 
 def get_split(split_name, dataset_dir, file_pattern=None, reader=None):

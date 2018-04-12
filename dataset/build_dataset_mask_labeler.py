@@ -79,21 +79,20 @@ import tensorflow as tf
 
 
 #################################HYPERPARAM#########################################
-TRAIN_LABEL_LIST = 'train_label_eric.txt'
-OUTPUT_DIR = '/home/chen/Downloads/Eric/tfexample/'
+OUTPUT_DIR = '/home/chen/Downloads/Eric/additional_svs/combined_self_eric/tfexample_logical_split_2/'
 #################################HYPERPARAM#########################################
 
 tf.app.flags.DEFINE_string('data_dir', '/home/chen/Downloads',
                            'Data directory of HE_IHC')
 
-tf.app.flags.DEFINE_string('train_img_list', 'train_img_eric.txt',
+tf.app.flags.DEFINE_string('train_img_list', 'train_img_combined.txt',
                            'Training data list of HE_IHC')
-tf.app.flags.DEFINE_string('train_label_list', 'train_label_eric.txt',
+tf.app.flags.DEFINE_string('train_label_list', 'train_label_combined.txt',
                            'Training data list of HE_IHC')
 
-tf.app.flags.DEFINE_string('validation_img_list', 'val_img_eric.txt',
+tf.app.flags.DEFINE_string('validation_img_list', 'val_img_combined.txt',
                            'Validation data list of HE_IHC')
-tf.app.flags.DEFINE_string('validation_label_list', 'val_label_eric.txt',
+tf.app.flags.DEFINE_string('validation_label_list', 'val_label_combined.txt',
                            'Validation data list of HE_IHC')
 
 tf.app.flags.DEFINE_string('output_directory', OUTPUT_DIR,
