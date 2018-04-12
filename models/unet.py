@@ -104,21 +104,29 @@ def u_net_deconv(inputs, endpoints, weight_decay=0.0005, scope='vgg_16', is_trai
                 net = upsample_concat(inputs, endpoints['conv4'])
                 net = layers.convolution2d(net, 512, [3, 3], scope='deconv4_1')
                 net = layers.convolution2d(net, 512, [3, 3], scope='deconv4_2')
+                if dropout:
+                    net = tf.nn.dropout(net, 0.5)
                 endpoints['deconv4'] = net
 
                 net = upsample_concat(net, endpoints['conv3'])
                 net = layers.convolution2d(net, 256, [3, 3], scope='deconv3_1')
                 net = layers.convolution2d(net, 256, [3, 3], scope='deconv3_2')
+                if dropout:
+                    net = tf.nn.dropout(net, 0.5)
                 endpoints['deconv3'] = net
 
                 net = upsample_concat(net, endpoints['conv2'])
                 net = layers.convolution2d(net, 128, [3, 3], scope='deconv2_1')
                 net = layers.convolution2d(net, 128, [3, 3], scope='deconv2_2')
+                if dropout:
+                    net = tf.nn.dropout(net, 0.5)
                 endpoints['deconv2'] = net
 
                 net = upsample_concat(net, endpoints['conv1'])
                 net = layers.convolution2d(net, 64, [3, 3], scope='deconv1_1')
                 net = layers.convolution2d(net, 64, [3, 3], scope='deconv1_2')
+                if dropout:
+                    net = tf.nn.dropout(net, 0.5)
                 endpoints['deconv1'] = net
                 
                 net = layers.convolution2d(net, num_classes, [1, 1], normalizer_fn=None, activation_fn=tf.nn.sigmoid, scope='deconv0')

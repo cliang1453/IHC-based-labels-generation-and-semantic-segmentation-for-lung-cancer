@@ -60,35 +60,12 @@ def read_images_from_disk(input_queue, input_size, random_scale, image_mean):
     return img, label, original_size
 
 
-class ImageReaderEric(object):
+class ImageReader(object):
     '''Generic ImageReader which reads images and corresponding segmentation
        masks from the disk, and enqueues them into a TensorFlow queue.
     '''
 
-    # def __init__(self, data_dir, data_list, input_size, is_training, random_scale, coord, image_mean):
-    #     '''Initialise an ImageReader.
-    #
-    #     Args:
-    #       data_dir: path to the directory with images and masks.
-    #       data_list: path to the file with lines of the form '/path/to/image /path/to/mask'.
-    #       input_size: a tuple with (height, width) values, to which all the images will be resized.
-    #       random_scale: whether to randomly scale the images prior to random crop.
-    #       coord: TensorFlow queue coordinator.
-    #     '''
-    #     self.data_dir = data_dir
-    #     self.data_list = data_list
-    #     self.input_size = input_size
-    #
-    #     self.coord = coord
-    #
-    #     self.image_list, self.label_list = read_labeled_image_list(self.data_dir, self.data_list)
-    #     self.images = tf.convert_to_tensor(self.image_list, dtype=tf.string)
-    #     self.labels = tf.convert_to_tensor(self.label_list, dtype=tf.string)
-    #     self.queue = tf.train.slice_input_producer([self.images, self.labels],
-    #                                                shuffle=is_training) # Not shuffling if it is val.
-    #     self.image, self.label, self.original_size = read_images_from_disk(self.queue, self.input_size, random_scale, image_mean)
-
-    def __init__(self, dataset_name, dataset_split_name, dataset_dir, input_size, coord, image_mean, eva_trainset):
+    def __init__(self, dataset_name, dataset_split_name, dataset_dir, input_size, coord, image_mean):
         '''Initialise an ImageReader.
 
         Args:
@@ -102,7 +79,88 @@ class ImageReaderEric(object):
         self.coord = coord
 
         dataset = dataset_factory.get_dataset(dataset_name, dataset_split_name, dataset_dir)
-        is_training = (dataset_split_name =='train' and eva_trainset==False)
+        is_training = (dataset_split_name =='train')
+        num_epochs = None if is_training else 1
+
+        with tf.name_scope(dataset_name + '_data_provider'):
+            provider = slim.dataset_data_provider.DatasetDataProvider(
+                dataset,
+                num_readers=4,
+                common_queue_capacity=20 * 8,
+                common_queue_min=10 * 8,
+                shuffle=is_training,
+                num_epochs=num_epochs)
+
+        [filename, img, stained, labelID, labelRGB, h, w] = provider.get(['img_filename', 'image', 'stained', 
+                                                                           'labelID', 'labelRGB', 'width', 'height'])
+
+        h = tf.to_int32(h)
+        w = tf.to_int32(w)
+        self.original_size = tf.concat([h,w], axis=0)
+        self.image_name = filename
+
+        if input_size is not None:
+            h, w = input_size
+            new_shape = tf.constant([h, w], dtype=tf.int32)
+            
+            img = tf.image.resize_images(img, new_shape)
+            stained = tf.image.resize_images(stained, new_shape)
+            labelRGB = tf.image.resize_images(labelRGB, new_shape)
+            
+            labelID = tf.image.resize_nearest_neighbor(tf.expand_dims(labelID, 0), new_shape)
+            labelID = tf.squeeze(labelID, squeeze_dims=[0])  # resize_image_with_crop_or_pad accepts 3D-tensor.
+        
+        # Extract mean.
+        img -= image_mean
+        labelRGB -= image_mean
+        stained -= image_mean
+
+        self.image = img
+        self.stained = stained
+        self.label = labelID
+        self.labelRGB = labelRGB
+
+
+
+    def dequeue(self, num_elements):
+        '''Pack images and labels into a batch.
+        
+        Args:
+          num_elements: the batch size.
+          
+        Returns:
+          Two tensors of size (batch_size, h, w, {3,1}) for images and masks.'''
+
+        image_batch, label_batch, stained_batch, labelRGB_batch = tf.train.batch([self.image, self.label, self.stained, self.labelRGB],
+                                                  num_elements, num_threads=4)
+        batch_queue = slim.prefetch_queue.prefetch_queue([image_batch, label_batch, stained_batch, labelRGB_batch], num_threads=4)
+
+        image_batch, label_batch, stained_batch, labelRGB_batch = batch_queue.dequeue()
+
+        return image_batch, label_batch, stained_batch, labelRGB_batch
+
+
+
+class LabelerImageReader(object):
+    '''Generic ImageReader which reads images and corresponding segmentation
+       masks from the disk, and enqueues them into a TensorFlow queue.
+    '''
+
+    def __init__(self, dataset_name, dataset_split_name, dataset_dir, input_size, coord, image_mean):
+        '''Initialise an ImageReader.
+
+        Args:
+          data_dir: path to the directory with images and masks.
+          data_list: path to the file with lines of the form '/path/to/image /path/to/mask'.
+          input_size: a tuple with (height, width) values, to which all the images will be resized.
+          random_scale: whether to randomly scale the images prior to random crop.
+          coord: TensorFlow queue coordinator.
+        '''
+        self.input_size = input_size
+        self.coord = coord
+
+        dataset = dataset_factory.get_dataset(dataset_name, dataset_split_name, dataset_dir)
+        is_training = (dataset_split_name =='train')
         num_epochs = None if is_training else 1
 
         with tf.name_scope(dataset_name + '_data_provider'):
@@ -160,35 +218,12 @@ class ImageReaderEric(object):
         return image_batch, label_batch, labelRGB_batch
 
 
-class ImageReader(object):
+class MaskedImageReader(object):
     '''Generic ImageReader which reads images and corresponding segmentation
        masks from the disk, and enqueues them into a TensorFlow queue.
     '''
 
-    # def __init__(self, data_dir, data_list, input_size, is_training, random_scale, coord, image_mean):
-    #     '''Initialise an ImageReader.
-    #
-    #     Args:
-    #       data_dir: path to the directory with images and masks.
-    #       data_list: path to the file with lines of the form '/path/to/image /path/to/mask'.
-    #       input_size: a tuple with (height, width) values, to which all the images will be resized.
-    #       random_scale: whether to randomly scale the images prior to random crop.
-    #       coord: TensorFlow queue coordinator.
-    #     '''
-    #     self.data_dir = data_dir
-    #     self.data_list = data_list
-    #     self.input_size = input_size
-    #
-    #     self.coord = coord
-    #
-    #     self.image_list, self.label_list = read_labeled_image_list(self.data_dir, self.data_list)
-    #     self.images = tf.convert_to_tensor(self.image_list, dtype=tf.string)
-    #     self.labels = tf.convert_to_tensor(self.label_list, dtype=tf.string)
-    #     self.queue = tf.train.slice_input_producer([self.images, self.labels],
-    #                                                shuffle=is_training) # Not shuffling if it is val.
-    #     self.image, self.label, self.original_size = read_images_from_disk(self.queue, self.input_size, random_scale, image_mean)
-
-    def __init__(self, dataset_name, dataset_split_name, dataset_dir, input_size, coord, image_mean, eva_trainset):
+    def __init__(self, dataset_name, dataset_split_name, dataset_dir, input_size, coord, image_mean):
         '''Initialise an ImageReader.
 
         Args:
@@ -202,7 +237,7 @@ class ImageReader(object):
         self.coord = coord
 
         dataset = dataset_factory.get_dataset(dataset_name, dataset_split_name, dataset_dir)
-        is_training = (dataset_split_name =='train' and eva_trainset==False)
+        is_training = (dataset_split_name =='train')
         num_epochs = None if is_training else 1
 
         with tf.name_scope(dataset_name + '_data_provider'):

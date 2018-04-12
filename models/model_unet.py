@@ -8,23 +8,18 @@ arg_scope = tf.contrib.framework.arg_scope
 
 
 class UnetModel(object):
-    """DeepLab-LargeFOV model with atrous convolution and bilinear upsampling.
 
-    This class implements a multi-layer convolutional neural network for semantic image segmentation task.
-    This is the same as the model described in this paper: https://arxiv.org/abs/1412.7062 - please look
-    there for details.
-    """
-
-    def __init__(self, number_class=3, is_training=True, is_simplified = False):
+    def __init__(self, number_class=3, is_training=True, is_simplified = False, dropout = True):
 
         """Create the model"""
         self.n_classes = number_class
         self.is_training = is_training
         self.is_simplified = is_simplified
+        self.dropout = dropout
 
     def _create_network(self, input_batch, dropout = False, is_training = True):
-        """Construct DeepLab-LargeFOV network.
 
+        """
         Args:
           input_batch: batch of pre-processed images.
           keep_prob: probability of keeping neurons intact.
@@ -33,7 +28,6 @@ class UnetModel(object):
           A downsampled segmentation mask.
         """
         if not self.is_simplified:
-            print('not simplified')
             net, _ = unet.unet(input_batch, self.n_classes, is_training = is_training, dropout = dropout, weight_decay=0.0005)
         else:
             net, _ = simplified_unet.unet(input_batch, self.n_classes, is_training = is_training, dropout = dropout, weight_decay=0.0005)
@@ -65,7 +59,7 @@ class UnetModel(object):
         Returns:
           Argmax over the predictions of the network of the same shape as the input.
         """
-        raw_output = self._create_network(tf.cast(input_batch, tf.float32), dropout=False, is_training = self.is_training)
+        raw_output = self._create_network(tf.cast(input_batch, tf.float32), dropout = self.dropout, is_training = self.is_training)
         raw_output = tf.image.resize_bilinear(raw_output, tf.shape(input_batch)[1:3, ])
         raw_output = tf.argmax(raw_output, axis=3)
         raw_output = tf.expand_dims(raw_output, axis=3)  # Create 4D-tensor.
@@ -80,7 +74,7 @@ class UnetModel(object):
         Returns:
           Pixel-wise softmax loss.
         """
-        raw_output = self._create_network(tf.cast(img_batch, tf.float32), dropout=True, is_training = self.is_training)
+        raw_output = self._create_network(tf.cast(img_batch, tf.float32), dropout = self.dropout, is_training = self.is_training)
 
         # Get prediction output
         raw_output_up = tf.image.resize_bilinear(raw_output, tf.shape(img_batch)[1:3, ])
@@ -94,7 +88,6 @@ class UnetModel(object):
         gt = tf.expand_dims(tf.cast(tf.reshape(label_batch, [-1]), tf.int32), axis=1)
 
         # Prepare mask
-
         if mask_batch != None:
             resized_mask_batch = tf.image.resize_nearest_neighbor(mask_batch, tf.stack(raw_output.get_shape()[1:3]))
             resized_mask_batch = tf.cast(tf.reshape(resized_mask_batch, [-1]), tf.float32)

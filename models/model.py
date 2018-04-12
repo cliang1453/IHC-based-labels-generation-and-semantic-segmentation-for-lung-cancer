@@ -105,12 +105,6 @@ class DeepLabLFOVModel(object):
 
 
 class DeepLabV2Model(object):
-    """DeepLab-LargeFOV model with atrous convolution and bilinear upsampling.
-    
-    This class implements a multi-layer convolutional neural network for semantic image segmentation task.
-    This is the same as the model described in this paper: https://arxiv.org/abs/1412.7062 - please look
-    there for details.
-    """
     
     def __init__(self, number_class=34):
 
@@ -198,12 +192,6 @@ class DeepLabV2Model(object):
         return pred, reduced_loss
 
 class ResNetDeepLabV2Model(object):
-    """DeepLab-LargeFOV model with atrous convolution and bilinear upsampling.
-
-    This class implements a multi-layer convolutional neural network for semantic image segmentation task.
-    This is the same as the model described in this paper: https://arxiv.org/abs/1412.7062 - please look
-    there for details.
-    """
 
     def __init__(self, number_class=34):
 
